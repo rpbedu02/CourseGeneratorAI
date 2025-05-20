@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Course Generator AI - Save & Export</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  /* Page-Specific styles for CourseSavingAndExport.html */
+
+  /* Card Styles - some aspects were specific here, others made common */
+  /* .card already common */
+  /* .card-header h3 already common */
+  /* .card-footer specific customizations for this page might go here if needed,
+     but common.css already provides a good base for .card-footer */
+  
+  input[type="text"] { /* This was specific to this page's modal input */
+    width: 100%; 
+    padding: 0.5rem; 
+    border: 1px solid var(--border); 
+    border-radius: var(--radius); 
+    font-size: 1rem; 
+    margin-bottom: 1rem; /* common.css also has margin-bottom for general inputs */
+  }
+
+  /* Modal Styles - Unique to this page */
+  .modal { 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    right: 0; 
+    bottom: 0; 
+    background-color: rgba(0,0,0,0.5); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    z-index: 1000; 
+    opacity: 0; 
+    visibility: hidden; 
+    transition: opacity 0.3s, visibility 0.3s; 
+  }
+  .modal.visible { 
+    opacity: 1; 
+    visibility: visible; 
+  }
+  .modal-content { 
+    background-color: var(--background); 
+    padding: 2rem; 
+    border-radius: var(--radius); 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+    width: 90%; 
+    max-width: 500px; 
+  }
+  .modal-content h3 { 
+    margin-top: 0; 
+  }
+  
+  /* Responsive adjustments specific to this page's modal or unique layouts */
+  @media (max-width: 768px) {
+    /* .card-footer stacking for general cards is in common.css. 
+       If #current-course-actions-card .card-footer needs different responsive behavior,
+       it would be styled here. Assuming common is sufficient.
+    */
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="app-header">
+      <div class="brand-logo">RPBedu</div>
+      <h1 class="app-title">CourseGeneratorAI</h1>
+      <div class="header-actions"></div>
+  </header>
+
+  <nav class="tabs">
+    <a href="CourseGeneratorAI.html" class="tab">Input Details</a>
+    <a href="CourseContentAndProgress.html" class="tab">Course Content & Progress</a>
+    <a href="#" class="tab active">Saved Courses & Export</a>
+  </nav>
+
+  <div id="main-content">
+    <div id="current-course-actions-card" class="card hidden">
+        <div class="card-header">
+            <h3>Manage Current Course</h3>
+        </div>
+        <div class="card-content">
+            <p>Course loaded: <strong id="current-course-title-display">N/A</strong></p>
+            <p class="text-sm text-muted">You can save this course to your list or export it as a fully interactive HTML file.</p>
+        </div>
+        <div class="card-footer">
+            <button id="save-current-course-btn" class="primary">Save Current Course</button>
+            <button id="export-current-course-btn">Export Interactive HTML</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Previously Saved Courses</h3>
+        </div>
+        <div class="card-content">
+            <div id="saved-courses-list">
+                <p class="text-center text-muted">No courses saved yet.</p>
+            </div>
+        </div>
+    </div>
+  </div>
+
+   <div id="alert-container"></div>
+
+</div>
+
+<div id="save-modal" class="modal">
+  <div class="modal-content">
+    <h3>Save Course</h3>
+    <div class="mb-4">
+      <label for="course-name-modal-input">Course Name:</label>
+      <input type="text" id="course-name-modal-input" placeholder="Enter a name for your course">
+    </div>
+    <div class="flex justify-end gap-2">
+      <button id="cancel-save-modal-btn">Cancel</button>
+      <button id="confirm-save-modal-btn" class="primary">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- App State ---
+  const state = {
+    courseToManage: null, 
+    savedCourses: [],     
+    apiKey: null,        
+    provider: null,
+    model: null,
+  };
+
+  // --- DOM Element References ---
+  const elements = {
+    currentCourseActionsCard: document.getElementById('current-course-actions-card'),
+    currentCourseTitleDisplay: document.getElementById('current-course-title-display'),
+    saveCurrentCourseBtn: document.getElementById('save-current-course-btn'),
+    exportCurrentCourseBtn: document.getElementById('export-current-course-btn'),
+    savedCoursesList: document.getElementById('saved-courses-list'),
+    saveModal: document.getElementById('save-modal'),
+    courseNameModalInput: document.getElementById('course-name-modal-input'),
+    cancelSaveModalBtn: document.getElementById('cancel-save-modal-btn'),
+    confirmSaveModalBtn: document.getElementById('confirm-save-modal-btn'),
+    alertContainer: document.getElementById('alert-container'),
+  };
+
+  // --- Helper Functions ---
+  function showAlert(message, type = 'error', duration = 5000) {
+    if (!elements.alertContainer) return;
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type}`;
+    alertDiv.style.marginBottom = '0.5rem';
+    alertDiv.innerHTML = `<div class="alert-content"><div class="alert-title">${type[0].toUpperCase()+type.slice(1)}</div><div class="alert-description">${message}</div></div>`;
+    elements.alertContainer.prepend(alertDiv);
+    if (duration > 0) { setTimeout(() => { alertDiv.remove(); }, duration); }
+  }
+
+  function escapeHtml(unsafe) {
+      if (typeof unsafe !== 'string') {
+          try { unsafe = String(unsafe); } catch (e) { return ''; }
+      }
+      return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  }
+
+
+  // --- Initialization ---
+  function init() {
+    console.log("CourseSavingAndExport.html: Initializing...");
+    loadApiInfoFromStorage(); 
+    loadCourseToManage();     
+    loadSavedCoursesList();   
+    setupEventListeners();
+  }
+
+  function setupEventListeners() {
+    elements.saveCurrentCourseBtn.addEventListener('click', showSaveCurrentCourseModal);
+    elements.exportCurrentCourseBtn.addEventListener('click', exportInteractiveCourseHTML);
+    elements.cancelSaveModalBtn.addEventListener('click', hideSaveModal);
+    elements.confirmSaveModalBtn.addEventListener('click', handleConfirmSaveCurrentCourse);
+
+    elements.savedCoursesList.addEventListener('click', (event) => {
+        const loadButton = event.target.closest('.load-saved-course-btn');
+        const deleteButton = event.target.closest('.delete-saved-course-btn');
+
+        if (loadButton) {
+            const courseId = loadButton.dataset.id;
+            handleLoadSavedCourse(courseId);
+        } else if (deleteButton) {
+            const courseId = deleteButton.dataset.id;
+            handleDeleteSavedCourse(courseId);
+        }
+    });
+  }
+
+  // --- Data Loading ---
+  function loadApiInfoFromStorage() { /* As before, for potential future use */ }
+
+  function loadCourseToManage() {
+      console.log("Attempting to load 'courseToManage' from localStorage...");
+      try {
+          const courseDataString = localStorage.getItem('courseToManage');
+          if (courseDataString) {
+              state.courseToManage = JSON.parse(courseDataString);
+              const displayName = state.courseToManage.name || state.courseToManage.title || (state.courseToManage.content && state.courseToManage.content.title);
+              if (state.courseToManage && displayName) {
+                  console.log("Course to manage loaded:", displayName);
+                  elements.currentCourseTitleDisplay.textContent = displayName; // Will be escaped by textContent
+                  elements.currentCourseActionsCard.classList.remove('hidden');
+                  elements.saveCurrentCourseBtn.disabled = false;
+                  elements.exportCurrentCourseBtn.disabled = false;
+              } else { throw new Error("Invalid structure or missing title/name for 'courseToManage'."); }
+          } else {
+              console.log("'courseToManage' not found in localStorage.");
+              elements.currentCourseActionsCard.classList.add('hidden');
+          }
+      } catch (error) {
+          console.error("Error loading 'courseToManage':", error);
+          elements.currentCourseActionsCard.classList.add('hidden');
+          showAlert("Error loading current course data.", "error");
+      }
+  }
+
+  function loadSavedCoursesList() {
+      console.log("Loading all saved courses...");
+      try {
+          const savedCoursesJson = localStorage.getItem('savedCourses');
+          state.savedCourses = savedCoursesJson ? JSON.parse(savedCoursesJson) : [];
+          if (!Array.isArray(state.savedCourses)) state.savedCourses = [];
+      } catch (e) {
+          console.error("Error loading saved courses list:", e); state.savedCourses = [];
+          showAlert("Could not load saved courses. Storage might be corrupted.", "error");
+      }
+      renderSavedCourses();
+  }
+
+  // --- UI Rendering ---
+  function renderSavedCourses() {
+    if (!elements.savedCoursesList) return;
+    if (!state.savedCourses?.length) {
+      elements.savedCoursesList.innerHTML = '<p class="text-center text-muted">No courses saved yet.</p>';
+      return;
+    }
+    const sortedCourses = [...state.savedCourses].sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+    elements.savedCoursesList.innerHTML = sortedCourses.map(course => {
+        let description = "No description.";
+        if (course.content && course.content.description) { 
+            description = course.content.description;
+        } else if (course.description) { 
+            description = course.description;
+        }
+        return `
+            <div class="card mb-4">
+                <div class="card-header">
+                <h3>${escapeHtml(course.name || 'Untitled Course')}</h3>
+                <p class="text-sm text-muted">Last Updated: ${course.updatedAt ? new Date(course.updatedAt).toLocaleString() : 'N/A'}</p>
+                </div>
+                <div class="card-content">
+                <p class="text-sm text-muted">${escapeHtml(description.substring(0, 150))}... </p>
+                </div>
+                <div class="card-footer">
+                <button class="load-saved-course-btn primary" data-id="${escapeHtml(course.id)}">Load & View</button>
+                <button class="delete-saved-course-btn destructive" data-id="${escapeHtml(course.id)}">Delete</button>
+                </div>
+            </div>`;
+        }).join('');
+  }
+
+  // --- Action Handlers ---
+  function handleLoadSavedCourse(courseId) {
+      console.log("Loading saved course:", courseId);
+      const courseToLoad = state.savedCourses.find(c => c.id === courseId);
+      if (!courseToLoad) {
+          showAlert("Could not find the selected course to load.", "error");
+          return;
+      }
+      
+      let contentForNextPage;
+      if (courseToLoad.content && typeof courseToLoad.content === 'object' && Array.isArray(courseToLoad.content.modules)) {
+          contentForNextPage = { ...courseToLoad.content };
+          if (courseToLoad.name && !contentForNextPage.title) contentForNextPage.title = courseToLoad.name; 
+          if (courseToLoad.id && !contentForNextPage.id) contentForNextPage.id = courseToLoad.id;
+      } else if (Array.isArray(courseToLoad.modules)) {
+          contentForNextPage = { ...courseToLoad };
+          if (courseToLoad.name && !courseToLoad.title) contentForNextPage.title = courseToLoad.name;
+      } else {
+          showAlert("Selected course has an invalid structure and cannot be loaded.", "error");
+          console.error("Invalid structure for courseToLoad:", courseToLoad);
+          return;
+      }
+      
+      if (contentForNextPage) {
+          try {
+              localStorage.setItem('courseToManage', JSON.stringify(contentForNextPage));
+              if(state.apiKey) localStorage.setItem('storedApiKey', state.apiKey);
+              if(state.provider) localStorage.setItem('storedProvider', state.provider);
+              if(state.model) localStorage.setItem('storedModel', state.model);
+              window.location.href = 'CourseContentAndProgress.html';
+          } catch (e) { showAlert("Error preparing course for viewing.", "error"); console.error("Error setting item for redirect:", e); }
+      } else { showAlert("Could not load the selected course due to missing content.", "error"); }
+  }
+
+  function handleDeleteSavedCourse(courseId) {
+      const course = state.savedCourses.find(c => c.id === courseId);
+      if (!course || !confirm(`Delete "${escapeHtml(course.name || courseId)}"? This cannot be undone.`)) return;
+
+      state.savedCourses = state.savedCourses.filter(c => c.id !== courseId);
+      try {
+          localStorage.setItem('savedCourses', JSON.stringify(state.savedCourses));
+          showAlert(`Course "${escapeHtml(course.name || 'Untitled')}" deleted.`, 'success');
+          if (state.courseToManage && state.courseToManage.id === courseId) {
+              state.courseToManage = null;
+              localStorage.removeItem('courseToManage'); 
+              elements.currentCourseActionsCard.classList.add('hidden');
+              elements.currentCourseTitleDisplay.textContent = 'N/A';
+          }
+      } catch (e) { showAlert("Error deleting course from storage.", "error"); console.error("Error updating localStorage after delete:", e); loadSavedCoursesList(); return; }
+      renderSavedCourses();
+  }
+
+  function showSaveCurrentCourseModal() {
+      if (!state.courseToManage) { showAlert("No current course loaded to save.", "info"); return; }
+      elements.courseNameModalInput.value = state.courseToManage.name || state.courseToManage.title || (state.courseToManage.content && state.courseToManage.content.title) || '';
+      elements.saveModal.classList.add('visible');
+  }
+
+  function hideSaveModal() { elements.saveModal.classList.remove('visible'); }
+
+  function handleConfirmSaveCurrentCourse() {
+      const courseName = elements.courseNameModalInput.value.trim();
+      if (!courseName) { showAlert("Please enter a name for the course.", "error"); return; }
+      if (!state.courseToManage) { showAlert("No current course data to save.", "error"); hideSaveModal(); return; }
+
+      let courseId = state.courseToManage.id || 'course_' + Date.now();
+      let actualContent; 
+      let baseObjectForSpread = {}; 
+
+      if (state.courseToManage.content && typeof state.courseToManage.content === 'object') {
+          actualContent = { ...state.courseToManage.content }; 
+          if (state.courseToManage.id) baseObjectForSpread.id = state.courseToManage.id;
+          if (state.courseToManage.createdAt) baseObjectForSpread.createdAt = state.courseToManage.createdAt;
+      } else {
+          actualContent = { ...state.courseToManage };
+      }
+      
+      if (!actualContent.title && courseName) actualContent.title = courseName; 
+      if (!Array.isArray(actualContent.modules)) {
+        console.warn("Saving course without modules array. This might cause issues on load/export.");
+        actualContent.modules = []; 
+      }
+
+      const courseDataToSave = {
+          ...baseObjectForSpread, 
+          ...actualContent,       
+          id: courseId,           
+          name: courseName,       
+          updatedAt: new Date().toISOString(),
+          createdAt: baseObjectForSpread.createdAt || actualContent.createdAt || new Date().toISOString()
+      };
+      delete courseDataToSave.content; 
+
+      const existingIndex = state.savedCourses.findIndex(c => c.id === courseId);
+      if (existingIndex > -1) {
+          state.savedCourses[existingIndex] = courseDataToSave;
+      } else {
+          state.savedCourses.push(courseDataToSave);
+      }
+
+      try {
+          localStorage.setItem('savedCourses', JSON.stringify(state.savedCourses));
+          showAlert(`Course "${escapeHtml(courseName)}" saved successfully!`, 'success');
+          state.courseToManage = courseDataToSave; 
+          localStorage.setItem('courseToManage', JSON.stringify(state.courseToManage)); 
+          elements.currentCourseTitleDisplay.textContent = escapeHtml(courseDataToSave.name); 
+      } catch (e) { console.error("Error saving course:", e); showAlert("Failed to save course.", "error"); }
+      renderSavedCourses();
+      hideSaveModal();
+  }
+
+  function exportInteractiveCourseHTML() {
+    console.log("Exporting interactive HTML...");
+    if (!state.courseToManage) {
+        showAlert("No current course loaded to export.", "error");
+        return;
+    }
+
+    let actualCourseContent;
+    if (state.courseToManage.content && typeof state.courseToManage.content === 'object' && Array.isArray(state.courseToManage.content.modules)) {
+        actualCourseContent = state.courseToManage.content;
+    } else if (Array.isArray(state.courseToManage.modules)) {
+        actualCourseContent = state.courseToManage;
+    } else {
+        showAlert("Current course data is not in a recognizable format or is missing essential components (like modules) for export.", "error");
+        console.error("Unrecognized/incomplete state.courseToManage structure for export:", JSON.parse(JSON.stringify(state.courseToManage || {})));
+        return;
+    }
+
+    const course = actualCourseContent; 
+    const courseTitleForExport = state.courseToManage.name || course.title || "Exported Course";
+
+    const embeddedCSS = `
+        :root { --primary: #0070f3; --primary-foreground: #ffffff; --background: #ffffff; --foreground: #000000; --muted: #f5f5f5; --muted-foreground: #6b7280; --border: #e5e7eb; --accent: #f3f4f6; --radius: 0.5rem; --success: #10b981; --destructive: #ef4444; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; margin: 0; padding: 0; background-color: var(--background); color: var(--foreground); }
+        body.modal-open { overflow: hidden; }
+        .container { max-width: 900px; margin: 1rem auto; padding: 1rem; }
+        body.modal-open .container { opacity: 0.3; filter: blur(4px); pointer-events: none; }
+        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.6em; font-weight: 600; line-height: 1.2; }
+        h1 { font-size: 2em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em;}
+        p { margin-bottom: 1em; } ul, ol { margin-bottom: 1em; padding-left: 1.5em; }
+        .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+        .tab { padding: 0.75rem 1.5rem; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab.active { border-bottom-color: var(--primary); color: var(--primary); }
+        .tab-content { display: none; } .tab-content.active { display: block; }
+        .module { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 1.5em; overflow: hidden; }
+        .module-header { background-color: var(--muted); padding: 0.75em 1em; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .module-header h4 { margin: 0; } .module-toggle { transition: transform 0.3s ease; }
+        .module-content { padding: 1.5rem; display: none; }
+        .lesson { padding: 1.5rem 0; border-bottom: 1px solid var(--border); } .lesson:last-child { border-bottom: none; }
+        .lesson-number { background-color: var(--primary); color: var(--primary-foreground); padding: 0.1em 0.4em; border-radius: 0.25rem; margin-right: 0.5em; font-size: 0.8em; font-weight: bold; display: inline-block; }
+        .quiz-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; opacity: 0; transition: opacity 0.3s ease; }
+        .quiz-modal.visible { display: flex; opacity: 1; }
+        .quiz-modal-content { background-color:white; padding:2rem; border-radius:var(--radius); max-width:700px; width:90%; max-height:90vh; display:flex; flex-direction:column; position:relative; }
+        .quiz-modal-header { display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:1rem; margin-bottom:1rem; }
+        .quiz-modal-title { margin:0; font-size:1.5rem; }
+        .quiz-modal-close-button { background:none; border:none; font-size:1.5rem; cursor:pointer; }
+        .quiz-modal-body { overflow-y:auto; flex-grow:1; }
+        .quiz-question { margin-bottom:1.5rem; } .quiz-options { list-style:none; padding:0; }
+        .quiz-option { padding:.75rem; border:1px solid var(--border); border-radius:.25rem; margin-bottom:.5rem; cursor:pointer; }
+        .quiz-option:hover { background-color:var(--accent); }
+        .quiz-option.selected { border-color:var(--primary); background-color:rgba(0,112,243,0.1); }
+        .quiz-option.correct { border-color:var(--success); background-color:rgba(16,185,129,0.1); font-weight:bold; }
+        .quiz-option.incorrect { border-color:var(--destructive); background-color:rgba(239,68,68,0.1); text-decoration:line-through; }
+        .quiz-option.disabled { pointer-events:none; opacity:0.7; }
+        .quiz-explanation { margin-top:1rem; padding:1rem; background-color:rgba(0,0,0,0.05); border-radius:.25rem; display:none; border-left:4px solid var(--primary); }
+        .quiz-progress { height:.5rem; background-color:var(--border); border-radius:9999px; margin-bottom:1rem; overflow:hidden; }
+        .quiz-progress-bar { height:100%; background-color:var(--primary); width:0%; transition:width .3s ease; }
+        .quiz-result { text-align:center; padding:2rem; display:none; border-top:1px solid var(--border); margin-top:1.5rem; }
+        .quiz-score { font-size:2rem; font-weight:bold; margin-bottom:1rem; }
+        .checkbox-label { display:flex; align-items:center; cursor:pointer; margin-bottom:0.5rem; }
+        .checkbox { appearance:none; width:1rem; height:1rem; border:1px solid var(--border); border-radius:.25rem; margin-right:.5rem; position:relative; cursor:pointer; }
+        .checkbox:checked { background-color:var(--primary); border-color:var(--primary); }
+        .checkbox:checked::after { content:''; position:absolute; left:5px; top:2px; width:3px; height:7px; border:solid white; border-width:0 2px 2px 0; transform:rotate(45deg); }
+        .hidden { display: none !important; }
+        button { padding: .5rem 1rem; border-radius: .5rem; border: 1px solid #ccc; cursor: pointer; }
+        button.primary { background-color: var(--primary); color: white; }
+        @media print { body, html { background-color: #fff !important; color: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } body.modal-open { overflow: auto !important; } body.modal-open .container { opacity: 1 !important; filter: none !important; pointer-events: auto !important; } .tabs, .module-header .module-toggle, .quiz-modal, button:not(.print-report-btn):not(.export-report-btn-text), input[type="text"], .card-footer:not(.report-footer) { display: none !important; } #content-tab { display: none !important; } #progress-tab { display: block !important; } .container { max-width: 100% !important; padding: 0 !important; margin: 1cm !important; } .card { border: none !important; box-shadow: none !important; margin-bottom: 1rem !important; page-break-inside: avoid !important; } .card-header { background-color: transparent !important; padding: 0 0 0.5rem 0 !important; border-bottom: 1px solid #ccc !important; } .card-content { padding: 0.5rem 0 !important; } h2 { font-size: 1.5rem !important; margin-top: 1rem !important; } h3 { font-size: 1.2rem !important; margin-top: 0.5rem !important; } .progress-bar { border: 1px solid #ccc !important; background-color: #eee !important; height: 1rem !important; } .progress-bar-fill { background-color: #999 !important; } .module-progress { border: 1px solid #eee !important; padding: 0.5rem !important; } #student-name-print { display: block; margin-bottom: 1rem; font-weight: bold; } * { color: #000 !important; } }
+    `;
+
+    const embeddedCourseData = JSON.stringify(course);
+
+    const embeddedJS = `
+        const courseData = ${embeddedCourseData};
+        let courseProgress = { completedLessons: {}, quizScores: {}, quizAnswers: {} };
+        let currentQuizInfo = { moduleIndex: null, lessonIndex: null, currentQuestionIndex: 0, score: 0 };
+
+        function escapeHtml(unsafe) {
+            if (typeof unsafe !== 'string') { try { unsafe = String(unsafe); } catch (e) { return ''; } }
+            return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // Fisher-Yates (Knuth) Shuffle algorithm
+        function shuffleArray(array) {
+            let currentIndex = array.length, randomIndex;
+            // While there remain elements to shuffle.
+            while (currentIndex !== 0) {
+                // Pick a remaining element.
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                // And swap it with the current element.
+                [array[currentIndex], array[randomIndex]] = [
+                array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+
+        function toggleModule(moduleIndex) {
+            const moduleContent = document.getElementById('module-' + moduleIndex + '-content');
+            const moduleToggle = document.querySelector(\`.module[data-module-id="\${moduleIndex}"] .module-toggle\`);
+            if (moduleContent && moduleToggle) {
+                const isVisible = moduleContent.style.display === 'block';
+                moduleContent.style.display = isVisible ? 'none' : 'block';
+                moduleToggle.textContent = isVisible ? '▼' : '▲';
+            }
+        }
+
+        function toggleLessonCompletion(moduleIndex, lessonIndex, checkbox) {
+            const moduleId = \`module-\${moduleIndex}\`;
+            const lessonId = \`lesson-\${lessonIndex}\`;
+            if (!courseProgress.completedLessons[moduleId]) courseProgress.completedLessons[moduleId] = [];
+            const lessonSet = new Set(courseProgress.completedLessons[moduleId]);
+            if (checkbox.checked) lessonSet.add(lessonId); else lessonSet.delete(lessonId);
+            courseProgress.completedLessons[moduleId] = Array.from(lessonSet);
+            checkModuleCompletion(moduleIndex);
+            updateProgressUI();
+            saveProgressToLocal();
+        }
+
+        function checkModuleCompletion(moduleIndex) {
+            const moduleId = \`module-\${moduleIndex}\`;
+            const moduleData = courseData.modules[moduleIndex];
+            if (!moduleData || !moduleData.lessons) return;
+            const totalLessonsInModule = moduleData.lessons.length;
+            const completedLessonsInModule = courseProgress.completedLessons[moduleId]?.length || 0;
+            const allCompleted = totalLessonsInModule > 0 && completedLessonsInModule === totalLessonsInModule;
+            const moduleSet = new Set(courseProgress.completedModules || []);
+            if (allCompleted) moduleSet.add(moduleId); else moduleSet.delete(moduleId);
+            courseProgress.completedModules = Array.from(moduleSet);
+        }
+        
+        function updateCheckboxesOnLoad() {
+            document.querySelectorAll('.lesson-checkbox').forEach(checkbox => {
+                const modId = \`module-\${checkbox.dataset.moduleId}\`;
+                const lessId = \`lesson-\${checkbox.dataset.lessonId}\`;
+                checkbox.checked = courseProgress.completedLessons[modId]?.includes(lessId) || false;
+            });
+        }
+
+        function startQuiz(moduleIndex, lessonIndex) {
+            currentQuizInfo = { moduleIndex, lessonIndex, currentQuestionIndex: 0, score: 0 };
+            const quizData = courseData.modules[moduleIndex]?.lessons[lessonIndex]?.quiz;
+            if (!quizData || !quizData.questions || quizData.questions.length === 0) { alert("Quiz data not found."); return; }
+
+            const quizModal = document.getElementById('quiz-modal');
+            const quizModalTitle = document.getElementById('quiz-modal-title');
+            const quizModalBody = document.getElementById('quiz-modal-body');
+
+            quizModalTitle.textContent = escapeHtml(quizData.title || \`Quiz M\${moduleIndex+1}.L\${lessonIndex+1}\`);
+            let quizHTML = \`<div class="quiz-container" data-current-quiz-module="\${moduleIndex}" data-current-quiz-lesson="\${lessonIndex}">
+                              <div class="quiz-progress"><div class="quiz-progress-bar" style="width:0%;"></div></div>
+                              <div class="quiz-questions">\`;
+            
+            quizData.questions.forEach((q, qIdx) => {
+                let originalCorrectAnswerValue;
+                let originalCorrectOptionText = '';
+
+                if (typeof q.correctAnswer !== 'undefined') { // Prefer 'correctAnswer' (could be index or text)
+                    originalCorrectAnswerValue = q.correctAnswer;
+                    if (typeof q.correctAnswer === 'number' && q.options[q.correctAnswer]) {
+                        originalCorrectOptionText = q.options[q.correctAnswer];
+                    } else if (typeof q.correctAnswer === 'string' && q.options.includes(q.correctAnswer)) {
+                         originalCorrectOptionText = q.correctAnswer;
+                    } else {
+                        console.warn(\`Question \${qIdx}: 'correctAnswer' is present but not a valid index or text in options.\`, q);
+                    }
+                } else if (typeof q.correctIndex !== 'undefined' && q.options[q.correctIndex]) { // Fallback to 'correctIndex'
+                    originalCorrectAnswerValue = q.correctIndex; // Store the index
+                    originalCorrectOptionText = q.options[q.correctIndex];
+                } else {
+                    console.error(\`Question \${qIdx}: No valid 'correctAnswer' or 'correctIndex' found.\`, q);
+                    originalCorrectAnswerValue = 'INVALID_ANSWER_DATA'; // Mark to handle later
+                }
+                
+                const shuffledOptions = q.options ? shuffleArray([...q.options]) : [];
+                let newCorrectIndexForShuffled = -1;
+                if (originalCorrectOptionText) {
+                    newCorrectIndexForShuffled = shuffledOptions.findIndex(opt => String(opt).trim() === String(originalCorrectOptionText).trim());
+                } else if (originalCorrectAnswerValue !== 'INVALID_ANSWER_DATA' && typeof originalCorrectAnswerValue === 'number') {
+                     // This case is less likely if correctOptionText wasn't found from index, but as a fallback
+                    console.warn("Could not determine original correct option text, using index directly might be problematic with shuffling if not handled carefully.")
+                }
+
+
+                quizHTML += \`<div class="quiz-question" data-question-index="\${qIdx}" style="\${qIdx === 0 ? '' : 'display:none;'}">
+                                <p><strong>\${qIdx + 1}.</strong> \${escapeHtml(q.question)}</p>
+                                <ul class="quiz-options">\${shuffledOptions.map((opt, optIdx) => \`
+                                    <li class="quiz-option" data-option-index="\${optIdx}" onclick="selectQuizOption(this)">
+                                        \${String.fromCharCode(65 + optIdx)}. \${escapeHtml(opt)}
+                                    </li>\`).join('')}
+                                </ul>
+                                <div class="quiz-explanation" style="display:none;" data-correct-answer="\${(newCorrectIndexForShuffled !== -1 ? newCorrectIndexForShuffled : escapeHtml(String(originalCorrectAnswerValue)))}">
+                                    <p><strong>Explanation:</strong> \${escapeHtml(q.explanation)}</p>
+                                </div>
+                             </div>\`;
+            });
+            quizHTML += \`</div>
+                         <div style="margin-top:1rem; text-align:right;">
+                            <button class="submit-answer" onclick="submitQuizAnswer()" disabled>Submit Answer</button>
+                            <button class="next-question" style="display:none;" onclick="nextQuizQuestion()">Next</button>
+                         </div>
+                         <div class="quiz-result" style="display:none;">
+                            <h5>Quiz Complete!</h5>
+                            <div class="quiz-score">0%</div>
+                            <p class="quiz-feedback"></p>
+                            <button onclick="retakeQuiz()">Retake Quiz</button>
+                            <button onclick="closeQuiz()">Close</button>
+                         </div>
+                       </div>\`;
+            quizModalBody.innerHTML = quizHTML;
+            document.body.classList.add('modal-open');
+            quizModal.style.display = 'flex';
+            setTimeout(() => quizModal.style.opacity = 1, 10);
+        }
+
+        function closeQuiz() {
+            const quizModal = document.getElementById('quiz-modal');
+            quizModal.style.opacity = 0;
+            setTimeout(() => {
+                quizModal.style.display = 'none';
+                document.body.classList.remove('modal-open');
+                document.getElementById('quiz-modal-body').innerHTML = ''; 
+            }, 300);
+            currentQuizInfo = { moduleIndex: null, lessonIndex: null, currentQuestionIndex: 0, score: 0 }; 
+        }
+
+        function selectQuizOption(optionElement) {
+            const questionDiv = optionElement.closest('.quiz-question');
+            if (!questionDiv || optionElement.classList.contains('disabled')) return;
+            questionDiv.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+            optionElement.classList.add('selected');
+            const quizContainer = optionElement.closest('.quiz-container');
+            quizContainer.querySelector('.submit-answer').disabled = false;
+        }
+
+        function submitQuizAnswer() {
+            const { moduleIndex, lessonIndex, currentQuestionIndex } = currentQuizInfo;
+            const quizContainer = document.querySelector(\`.quiz-container[data-current-quiz-module="\${moduleIndex}"][data-current-quiz-lesson="\${lessonIndex}"]\`);
+            const questionDiv = quizContainer.querySelector(\`.quiz-question[data-question-index="\${currentQuestionIndex}"]\`);
+            const selectedOption = questionDiv.querySelector('.quiz-option.selected');
+            if (!selectedOption) { alert("Please select an answer."); return; }
+
+            const selectedIndex = parseInt(selectedOption.dataset.optionIndex); 
+
+            const explanationDiv = questionDiv.querySelector('.quiz-explanation');
+            const correctAnswerValueFromAttr = explanationDiv.dataset.correctAnswer; 
+            // Because of shuffling, correctAnswerValueFromAttr should now be the 0-indexed position of the correct answer *in the shuffled list*.
+            // Or it might be the original text if direct index mapping failed during startQuiz shuffle.
+            
+            const currentQuestionData = courseData.modules[moduleIndex]?.lessons[lessonIndex]?.quiz?.questions[currentQuestionIndex];
+            
+            if (!currentQuestionData || !currentQuestionData.options) {
+                console.error("Critical error: Question data or options not found for current quiz item.", currentQuestionData);
+                selectedOption.classList.add('incorrect');
+                selectedOption.classList.add('disabled');
+                questionDiv.querySelectorAll('.quiz-option:not(.selected)').forEach(opt => opt.classList.add('disabled'));
+                if (explanationDiv) explanationDiv.style.display = 'block';
+                quizContainer.querySelector('.submit-answer').style.display = 'none';
+                const nextBtn = quizContainer.querySelector('.next-question');
+                if (nextBtn) {
+                    nextBtn.style.display = 'inline-block';
+                    nextBtn.textContent = currentQuestionIndex >= (courseData.modules[moduleIndex]?.lessons[lessonIndex]?.quiz?.questions?.length || 0) - 1 ? 'Finish Quiz' : 'Next Question';
+                }
+                return;
+            }
+            // Options displayed to the user are from shuffledOptions in startQuiz.
+            // We need to compare selectedIndex against the data-correct-answer which *should be the shuffled index*.
+            const questionOptionsDisplayed = Array.from(questionDiv.querySelectorAll('.quiz-option')).map(opt => opt.textContent.substring(3).trim()); // Get text of displayed options
+
+            let correctIndex = -1; 
+
+            // Primary check: correctAnswerValueFromAttr is the 0-indexed correct position in the SHUFFLED list.
+            const parsedAttrAsIndex = parseInt(correctAnswerValueFromAttr);
+            if (!isNaN(parsedAttrAsIndex) && parsedAttrAsIndex >= 0 && parsedAttrAsIndex < questionOptionsDisplayed.length) {
+                correctIndex = parsedAttrAsIndex;
+            } else {
+                // Fallback: If correctAnswerValueFromAttr was text (e.g., original text of correct answer)
+                // find its index in the *currently displayed shuffled options*.
+                correctIndex = questionOptionsDisplayed.findIndex(optText => String(optText).trim() === String(correctAnswerValueFromAttr).trim());
+                 if (correctIndex === -1) { // Further fallback if it was stored as a letter from original non-shuffled options
+                    if (/^[a-zA-Z]$/.test(correctAnswerValueFromAttr)) {
+                        const letterIndex = correctAnswerValueFromAttr.toUpperCase().charCodeAt(0) - 'A'.charCodeAt(0);
+                        // This check is tricky with shuffling. It's better if data-correct-answer is always the shuffled index or the full text.
+                        // For now, assume it's mostly the shuffled index.
+                        console.warn("Correct answer was a letter, this might be unreliable with shuffled options unless it was mapped to shuffled index correctly.")
+                    }
+                 }
+            }
+
+
+            if (correctIndex === -1) {
+                console.warn(\`Could not definitively determine correct answer index based on data-correct-answer='\${correctAnswerValueFromAttr}'. Displayed options:\`, questionOptionsDisplayed, \`Proceeding, but quiz scoring/highlighting might be inaccurate for this question.\`);
+            }
+            
+            const quizKey = \`module-\${moduleIndex}-lesson-\${lessonIndex}\`;
+            if(!courseProgress.quizAnswers[quizKey]) courseProgress.quizAnswers[quizKey] = [];
+            courseProgress.quizAnswers[quizKey][currentQuestionIndex] = selectedIndex;
+
+            if (selectedIndex === correctIndex && correctIndex !== -1) { 
+                currentQuizInfo.score++;
+            }
+
+            questionDiv.querySelectorAll('.quiz-option').forEach(opt => {
+                opt.classList.add('disabled');
+                const optIdx = parseInt(opt.dataset.optionIndex);
+                if (optIdx === correctIndex && correctIndex !== -1) { 
+                    opt.classList.add('correct');
+                } else if (opt.classList.contains('selected')) {
+                    opt.classList.add('incorrect');
+                }
+            });
+            
+            if (explanationDiv) explanationDiv.style.display = 'block';
+            
+            quizContainer.querySelector('.submit-answer').style.display = 'none';
+            const nextBtn = quizContainer.querySelector('.next-question');
+             if (nextBtn) {
+                nextBtn.style.display = 'inline-block';
+                nextBtn.textContent = currentQuestionIndex >= courseData.modules[moduleIndex].lessons[lessonIndex].quiz.questions.length - 1 ? 'Finish Quiz' : 'Next Question';
+            }
+            saveProgressToLocal();
+        }
+
+
+        function nextQuizQuestion() {
+            const { moduleIndex, lessonIndex } = currentQuizInfo;
+            const quizContainer = document.querySelector(\`.quiz-container[data-current-quiz-module="\${moduleIndex}"][data-current-quiz-lesson="\${lessonIndex}"]\`);
+            const questions = courseData.modules[moduleIndex].lessons[lessonIndex].quiz.questions;
+            
+            const currentQuestionDiv = quizContainer.querySelector(\`.quiz-question[data-question-index="\${currentQuizInfo.currentQuestionIndex}"]\`);
+            if (currentQuestionDiv) currentQuestionDiv.style.display = 'none';
+
+            currentQuizInfo.currentQuestionIndex++;
+            const progressBar = quizContainer.querySelector('.quiz-progress-bar');
+            if(progressBar) progressBar.style.width = \`\${(currentQuizInfo.currentQuestionIndex / questions.length) * 100}%\`;
+
+            if (currentQuizInfo.currentQuestionIndex < questions.length) {
+                const nextQuestionDiv = quizContainer.querySelector(\`.quiz-question[data-question-index="\${currentQuizInfo.currentQuestionIndex}"]\`);
+                if (nextQuestionDiv) nextQuestionDiv.style.display = 'block';
+                quizContainer.querySelector('.submit-answer').style.display = 'inline-block';
+                quizContainer.querySelector('.submit-answer').disabled = true; 
+                quizContainer.querySelector('.next-question').style.display = 'none';
+            } else {
+                finishQuizInternal();
+            }
+        }
+        
+        function finishQuizInternal() {
+            const { moduleIndex, lessonIndex, score } = currentQuizInfo;
+            const quizContainer = document.querySelector(\`.quiz-container[data-current-quiz-module="\${moduleIndex}"][data-current-quiz-lesson="\${lessonIndex}"]\`);
+            const totalQuestions = courseData.modules[moduleIndex].lessons[lessonIndex].quiz.questions.length;
+            const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+
+            const quizKey = \`module-\${moduleIndex}-lesson-\${lessonIndex}\`;
+            courseProgress.quizScores[quizKey] = percentage;
+
+            const resultDiv = quizContainer.querySelector('.quiz-result');
+            resultDiv.querySelector('.quiz-score').textContent = \`\${percentage}%\`;
+            resultDiv.querySelector('.quiz-feedback').textContent = percentage >= 80 ? 'Excellent!' : (percentage >= 60 ? 'Good job!' : 'Keep practicing!');
+            resultDiv.style.display = 'block';
+            quizContainer.querySelector('.quiz-questions').style.display = 'none';
+            quizContainer.querySelector('.submit-answer').style.display = 'none';
+            quizContainer.querySelector('.next-question').style.display = 'none';
+            const progressBar = quizContainer.querySelector('.quiz-progress-bar');
+            if(progressBar) progressBar.style.width = '100%';
+            
+            const mainPageCheckbox = document.querySelector(\`.lesson-checkbox[data-module-id="\${moduleIndex}"][data-lesson-id="\${lessonIndex}"]\`);
+            if (mainPageCheckbox && !mainPageCheckbox.checked) {
+                 mainPageCheckbox.checked = true;
+                 const event = new Event('change', { bubbles: true });
+                 mainPageCheckbox.dispatchEvent(event);
+            } else {
+                updateProgressUI(); 
+                saveProgressToLocal();
+            }
+        }
+
+        function retakeQuiz() {
+            const { moduleIndex, lessonIndex } = currentQuizInfo;
+            const quizKey = \`module-\${moduleIndex}-lesson-\${lessonIndex}\`;
+            if(courseProgress.quizAnswers[quizKey]) courseProgress.quizAnswers[quizKey] = [];
+            startQuiz(moduleIndex, lessonIndex); 
+        }
+
+        function countTotalLessonsInExport() {
+            return courseData.modules.reduce((sum, mod) => sum + (mod.lessons?.length || 0), 0);
+        }
+
+        function updateProgressUI() {
+            const totalLessons = countTotalLessonsInExport();
+            if (totalLessons <= 0) return;
+            let completedCount = 0;
+            Object.values(courseProgress.completedLessons || {}).forEach(lessons => completedCount += lessons?.length || 0);
+            
+            const overallPercentEl = document.getElementById('overall-progress-percentage');
+            const overallBarEl = document.getElementById('overall-progress-bar');
+            const completedLessonsEl = document.getElementById('completed-lessons-count');
+            const totalLessonsEl = document.getElementById('total-lessons-count');
+            const avgScoreEl = document.getElementById('average-quiz-score');
+            const completedQuizzesEl = document.getElementById('completed-quizzes-count');
+
+            const progressPercentage = Math.round((completedCount / totalLessons) * 100);
+            if(overallPercentEl) overallPercentEl.textContent = \`\${progressPercentage}%\`;
+            if(overallBarEl) overallBarEl.style.width = \`\${progressPercentage}%\`;
+            if(completedLessonsEl) completedLessonsEl.textContent = completedCount;
+            if(totalLessonsEl) totalLessonsEl.textContent = totalLessons;
+
+            const quizScores = Object.values(courseProgress.quizScores || {});
+            const averageScore = quizScores.length > 0 ? Math.round(quizScores.reduce((sum, score) => sum + (score || 0), 0) / quizScores.length) : 0;
+            if(avgScoreEl) avgScoreEl.textContent = \`\${averageScore}%\`;
+            if(completedQuizzesEl) completedQuizzesEl.textContent = quizScores.length;
+            
+            generateModuleProgressUI();
+        }
+
+        function generateModuleProgressUI() {
+            const container = document.getElementById('module-progress-container');
+            if (!container) return;
+            container.innerHTML = '';
+            courseData.modules.forEach((module, moduleIndex) => {
+                const moduleId = \`module-\${moduleIndex}\`;
+                const totalLessonsInModule = module.lessons?.length || 0;
+                const completedLessonsInModule = courseProgress.completedLessons[moduleId]?.length || 0;
+                const progressPercentage = totalLessonsInModule > 0 ? Math.round((completedLessonsInModule / totalLessonsInModule) * 100) : 0;
+                container.innerHTML += \`<div class="module-progress">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.5rem;">
+                        <h4>\${moduleIndex + 1}. \${escapeHtml(module.title)}</h4>
+                        <span>\${progressPercentage}%</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-bar-fill" style="width: \${progressPercentage}%"></div></div>
+                    <div style="margin-top:.5rem; font-size:.875rem; color:var(--muted-foreground);">
+                        \${completedLessonsInModule} of \${totalLessonsInModule} lessons completed
+                    </div></div>\`;
+            });
+        }
+        
+        function saveProgressToLocal() {
+            try {
+                courseProgress.lastAccessed = new Date().toISOString();
+                localStorage.setItem('courseProgress-' + ((courseData.title || 'untitled').replace(/\\s+/g, '-')), JSON.stringify(courseProgress));
+            } catch (e) { console.error("Error saving progress to local storage:", e); }
+        }
+
+        function loadProgressFromLocal() {
+            try {
+                const saved = localStorage.getItem('courseProgress-' + ((courseData.title || 'untitled').replace(/\\s+/g, '-')));
+                if (saved) {
+                    const loadedProgress = JSON.parse(saved);
+                    courseProgress.completedLessons = loadedProgress.completedLessons || {};
+                    courseProgress.quizScores = loadedProgress.quizScores || {};
+                    courseProgress.quizAnswers = loadedProgress.quizAnswers || {}; 
+                    courseProgress.completedModules = loadedProgress.completedModules || [];
+                } else {
+                    courseProgress = { completedLessons: {}, quizScores: {}, quizAnswers: {}, completedModules: [] };
+                }
+            } catch (e) {
+                console.error("Error loading progress:", e);
+                courseProgress = { completedLessons: {}, quizScores: {}, quizAnswers: {}, completedModules: [] };
+            }
+        }
+
+        function generateReportContentText() {
+            const studentName = document.getElementById('student-name-input')?.value.trim() || "N/A";
+            const now = new Date();
+            const timestamp = now.toLocaleString();
+            const day = String(now.getDate()).padStart(2, '0');
+            const year = now.getFullYear();
+            const hour = now.getHours();
+            const validationCode = parseInt(\`\${day}\${year}\`, 10) * hour;
+
+            const totalLessons = countTotalLessonsInExport();
+            let completedCount = 0;
+            Object.values(courseProgress.completedLessons || {}).forEach(lessons => completedCount += lessons?.length || 0);
+            const progressPercentage = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+            const quizScoresValues = Object.values(courseProgress.quizScores || {});
+            const averageScore = quizScoresValues.length > 0 ? Math.round(quizScoresValues.reduce((sum, score) => sum + (score || 0), 0) / quizScoresValues.length) : 0;
+
+            let report = \`Course Progress Report\\n=====================\\nStudent Name: \${studentName}\\nCourse: \${escapeHtml(courseData.title || 'Untitled Course')}\\nReport Generated: \${timestamp}\\nValidation Code: \${validationCode}\\n\\nOverall Progress: \${progressPercentage}%\\nCompleted Lessons: \${completedCount} of \${totalLessons}\\nAverage Quiz Score: \${averageScore}% across \${quizScoresValues.length} quizzes\\n\\nModule Progress:\\n--------------\\n\`;
+            courseData.modules.forEach((module, moduleIndex) => {
+                const moduleId = \`module-\${moduleIndex}\`;
+                const totalLessonsInModule = module.lessons?.length || 0;
+                const completedLessonsInModule = courseProgress.completedLessons[moduleId]?.length || 0;
+                const moduleProgressPercentage = totalLessonsInModule > 0 ? Math.round((completedLessonsInModule / totalLessonsInModule) * 100) : 0;
+                report += \`\\n\${moduleIndex + 1}. \${escapeHtml(module.title)}: \${moduleProgressPercentage}% (\${completedLessonsInModule} of \${totalLessonsInModule} lessons)\\n\`;
+                (module.lessons || []).forEach((lesson, lessonIndex) => {
+                    const lessonId = \`lesson-\${lessonIndex}\`;
+                    const isCompleted = courseProgress.completedLessons[moduleId]?.includes(lessonId) || false;
+                    const quizScore = courseProgress.quizScores[\`\${moduleId}-\${lessonId}\`];
+                    report += \`   - \${isCompleted ? '✓' : '○'} \${escapeHtml(lesson.title)}\`;
+                    if (quizScore !== undefined && quizScore !== null) report += \` (Quiz Score: \${quizScore}%)\`;
+                    report += \`\\n\`;
+                });
+            });
+            return report;
+        }
+
+        function printProgressReport() {
+            const studentNameInput = document.getElementById('student-name-input');
+            const studentNamePrintDiv = document.getElementById('student-name-print');
+            if (studentNameInput && studentNamePrintDiv) {
+                studentNamePrintDiv.textContent = studentNameInput.value ? \`Student Name: \${escapeHtml(studentNameInput.value)}\` : '';
+                studentNamePrintDiv.style.display = studentNameInput.value ? 'block' : 'none';
+            }
+            window.print();
+             if (studentNamePrintDiv) {
+                setTimeout(() => { studentNamePrintDiv.style.display = 'none'; }, 500);
+            }
+        }
+        function exportProgressReportText() {
+            const reportContent = generateReportContentText();
+            const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            const studentNamePart = (document.getElementById('student-name-input')?.value.trim() || 'student').replace(/[^a-z0-9]/gi, '-').toLowerCase();
+            link.download = \`\${(courseData.title || 'course').replace(/[^a-z0-9]/gi, '-').toLowerCase()}-progress-\${studentNamePart}.txt\`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProgressFromLocal();
+            updateCheckboxesOnLoad();
+            updateProgressUI();
+            generateModuleProgressUI(); 
+
+            const tabs = document.querySelectorAll('.tab');
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabId = tab.getAttribute('data-tab');
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    tabContents.forEach(content => {
+                        content.style.display = content.id === tabId + '-tab' ? 'block' : 'none';
+                    });
+                });
+            });
+            if (tabs.length > 0 && tabContents.length > 0) {
+                tabs[0].classList.add('active');
+                tabContents[0].style.display = 'block';
+            }
+
+            document.querySelectorAll('.module-header').forEach((header, index) => {
+                header.setAttribute('data-module-id', index); 
+                header.onclick = () => toggleModule(index);
+            });
+            
+            const closeBtn = document.getElementById('quiz-modal-close-button');
+            if(closeBtn) closeBtn.onclick = closeQuiz;
+        });
+    `;
+
+    const htmlFileContent = `
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escapeHtml(courseTitleForExport)}</title><style>${embeddedCSS}<\/style></head>
+<body>
+  <div class="container">
+    <h1>${escapeHtml(courseTitleForExport)}</h1>
+    ${course.description ? `<p class="course-description">${escapeHtml(course.description)}</p>` : ''}
+    <div class="tabs">
+      <div class="tab active" data-tab="content">Course Content</div>
+      <div class="tab" data-tab="progress">Your Progress</div>
+    </div>
+    <div class="tab-content active" id="content-tab">
+      ${course.learningObjectives?.length ? `<div class="learning-objectives"><h3>Learning Objectives</h3><ul>${course.learningObjectives.map(o => `<li>${escapeHtml(o||'')}</li>`).join('')}</ul></div>` : ''}
+      <h2>Modules</h2>
+      ${(course.modules || []).map((module, modIdx) => `
+        <div class="module" data-module-id="${modIdx}">
+          <div class="module-header"><h4>${modIdx + 1}. ${escapeHtml(module.title || 'Untitled Module')}</h4><span class="module-toggle">▼</span></div>
+          <div class="module-content" id="module-${modIdx}-content">
+            <p>${escapeHtml(module.description || '')}</p>
+            ${(module.lessons || []).map((lesson, lesIdx) => `
+              <div class="lesson" id="lesson-${modIdx}-${lesIdx}">
+                <div class="lesson-header">
+                    <h5 class="lesson-title"><span class="lesson-number">${modIdx + 1}.${lesIdx + 1}</span>${escapeHtml(lesson.title || 'Untitled Lesson')}</h5>
+                    <label class="checkbox-label"><input type="checkbox" class="lesson-checkbox" data-module-id="${modIdx}" data-lesson-id="${lesIdx}" onchange="toggleLessonCompletion(${modIdx}, ${lesIdx}, this)"> Mark completed</label>
+                </div>
+                <div class="lesson-content">${(lesson.content || '').replace(/\n/g, '<br>')}</div>
+                ${lesson.activities?.length ? `<div><h6>Activities</h6><ul>${lesson.activities.map(a=>`<li>${escapeHtml(a||'')}</li>`).join('')}</ul></div>` : ''}
+                ${lesson.resources?.length ? `<div><h6>Resources</h6><ul>${lesson.resources.map(r=>`<li>${escapeHtml(r||'')}</li>`).join('')}</ul></div>` : ''}
+                ${lesson.quiz && lesson.quiz.questions && lesson.quiz.questions.length > 0 ? `<button class="take-quiz-button" onclick="startQuiz(${modIdx}, ${lesIdx})">Take Quiz</button>` : '<p style="font-size:0.9em;color:grey;">No quiz for this lesson.</p>'}
+              </div>`).join('')}
+          </div>
+        </div>`).join('')}
+    </div>
+    <div class="tab-content" id="progress-tab">
+        <div class="card progress-card" id="overall-progress-card"> <div class="card-header"><h2>Overall Progress</h2></div>
+            <div class="card-content">
+                <div id="student-name-print" style="display: none; font-weight: bold; margin-bottom: 1rem;"></div>
+                <div><div class="flex justify-between"><span>Course Completion</span><span id="overall-progress-percentage">0%</span></div><div class="progress-bar"><div class="progress-bar-fill" id="overall-progress-bar" style="width: 0%"></div></div></div>
+                <div style="margin-top: 2rem;"><h3>Completed Lessons</h3><div style="display: flex; align-items: baseline; margin-top: 0.5rem;"><div style="font-size: 1.5rem; font-weight: bold;" id="completed-lessons-count">0</div><div style="margin-left: 0.5rem; color:var(--muted-foreground);">/ <span id="total-lessons-count">0</span> lessons</div></div></div>
+                <div style="margin-top: 2rem;"><h3>Average Quiz Score</h3><div style="display: flex; align-items: baseline; margin-top: 0.5rem;"><div style="font-size: 1.5rem; font-weight: bold;" id="average-quiz-score">0%</div><div style="margin-left: 0.5rem; color:var(--muted-foreground);">across <span id="completed-quizzes-count">0</span> quizzes</div></div></div>
+            </div>
+        </div>
+        <div class="card" id="module-progress-card"> <div class="card-header"><h2>Module Progress</h2></div><div class="card-content"><div id="module-progress-container"></div></div>
+            <div class="card-footer report-footer">
+                <label for="student-name-input" style="margin-right: 0.5rem;">Student Name:</label><input type="text" id="student-name-input" placeholder="Enter Name for Report" style="flex-grow:1; margin-bottom:0;">
+                <button class="print-report-btn" onclick="printProgressReport()">Print Report</button>
+                <button class="export-report-btn-text" onclick="exportProgressReportText()">Export Report (.txt)</button>
+            </div>
+        </div>
+    </div>
+  </div>
+  <div class="quiz-modal" id="quiz-modal">
+    <div class="quiz-modal-content">
+        <div class="quiz-modal-header"><h3 class="quiz-modal-title" id="quiz-modal-title">Quiz</h3><button class="quiz-modal-close-button" id="quiz-modal-close-button" title="Close Quiz">&times;</button></div>
+        <div class="quiz-modal-body" id="quiz-modal-body"></div>
+    </div>
+  </div>
+  <script>${embeddedJS}<\/script>
+</body></html>`;
+
+      const blob = new Blob([htmlFileContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = (courseTitleForExport).replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_interactive.html';
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showAlert('Interactive course HTML exported!', 'success');
+  }
+  
+  // --- App Initialization ---
+  document.addEventListener('DOMContentLoaded', init);
+
+</script> 
+</body>
+</html>

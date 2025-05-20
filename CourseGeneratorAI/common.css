@@ -1,0 +1,350 @@
+/* common.css */
+:root {
+  --primary: #0070f3;
+  --primary-foreground: #ffffff;
+  --background: #ffffff;
+  --foreground: #000000;
+  --muted: #f5f5f5;
+  --muted-foreground: #6b7280;
+  --border: #e5e7eb;
+  --accent: #f3f4f6;
+  --accent-foreground: #111827;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --success: #10b981;
+  --success-foreground: #ffffff;
+  --radius: 0.5rem;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.6;
+  color: var(--foreground);
+  background-color: var(--background);
+  padding: 0;
+  margin: 0;
+}
+
+.container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+h1 { font-size: 2rem; }
+h2 { font-size: 1.5rem; }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.1rem; }
+h5 { font-size: 1.05rem; } /* Specific to CourseContentAndProgress */
+h6 { font-size: 1rem; font-weight: 600; } /* Specific to CourseContentAndProgress */
+
+p {
+  margin-bottom: 1rem;
+}
+
+ul, ol {
+  margin-bottom: 1rem;
+  padding-left: 1.5rem;
+}
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Header Styles */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0; 
+  position: relative;
+}
+.brand-logo {
+  font-weight: bold;
+  font-size: 1.2rem;
+  color: var(--primary);
+}
+.app-title {
+  font-size: 1.75rem;
+  font-weight: 600;
+  text-align: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 200px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.header-actions {
+  width: 80px; 
+  flex-shrink: 0;
+}
+
+/* Tab Navigation Styles */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2rem;
+}
+.tab {
+  padding: 0.75rem 1.5rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  transition: color 0.2s, border-color 0.2s;
+}
+.tab:hover {
+  color: var(--primary);
+}
+.tab.active {
+  border-bottom-color: var(--primary);
+  color: var(--primary);
+  font-weight: 500;
+}
+.tab a {
+  color: inherit;
+  text-decoration: none;
+  display: block;
+}
+
+/* Form elements (Mostly from CourseGeneratorAI.html but common enough) */
+input, textarea, select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 1rem;
+  line-height: 1.5;
+  background-color: var(--background);
+  color: var(--foreground);
+  margin-bottom: 1rem;
+}
+textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+button {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius);
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  color: var(--foreground);
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+button:hover {
+  background-color: var(--accent);
+}
+button.primary {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+}
+button.primary:hover {
+  background-color: #0060df;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+button.destructive { /* From CourseContentAndProgress & CourseSavingAndExport */
+  background-color: var(--destructive);
+  color: var(--destructive-foreground);
+  border-color: var(--destructive);
+}
+button.destructive:hover { /* From CourseContentAndProgress & CourseSavingAndExport */
+  background-color: #d73737; /* #c81e1e in SavingAndExport, #d73737 in ContentAndProgress. Standardizing to one. */
+}
+
+
+/* Layout & Card (Common structure) */
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+  /* background-color: var(--background); /* This was only in CourseSavingAndExport, making it general */
+}
+.card-header { /* Slight variations in padding, standardizing */
+  padding: 1.25rem 1.5rem; /* Avg from CourseSavingAndExport & CourseGeneratorAI */
+  border-bottom: 1px solid var(--border);
+  background-color: var(--accent);
+}
+.card-header h3 { /* Common for card titles */
+    margin: 0;
+    font-size: 1.15rem; /* From CourseSavingAndExport, slightly smaller than generic h3 */
+}
+.card-content {
+  padding: 1.5rem;
+}
+.card-footer { /* Specific to CourseContentAndProgress & CourseSavingAndExport */
+  padding: 1rem 1.5rem; /* Standardized from CourseSavingAndExport */
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem; /* Standardized from CourseSavingAndExport */
+  background-color: var(--accent); /* From CourseSavingAndExport */
+  flex-wrap: wrap; /* From CourseSavingAndExport */
+}
+
+
+/* Alerts */
+#alert-container { /* Common ID, consistent styling */
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  z-index: 2000;
+  width: 300px;
+  max-width: 90%;
+}
+.alert {
+  padding: 1rem;
+  border-radius: var(--radius);
+  margin-bottom: 0.5rem; /* Standardized */
+  display: flex;
+  align-items: flex-start;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1); /* Standardized */
+}
+.alert-content {
+  flex: 1;
+}
+.alert-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+.alert-description {
+  font-size: 0.875rem;
+}
+.alert-success {
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid var(--success);
+  color: #057a55;
+}
+.alert-error {
+  background-color: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--destructive);
+  color: #c81e1e; /* Standardized */
+}
+.alert-info {
+  background-color: rgba(0, 112, 243, 0.1);
+  border: 1px solid var(--primary);
+  color: #0058bf; /* Standardized */
+}
+
+/* Loading spinner */
+.spinner {
+  display: inline-block;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-left-color: currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  vertical-align: middle;
+  margin-right: 0.5rem;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Utility classes */
+.flex { display: flex; }
+.gap-2 { gap: 0.5rem; } 
+.gap-4 { gap: 1rem; } /* From CourseGeneratorAI */
+.mt-2 { margin-top: 0.5rem; } /* From CourseGeneratorAI */
+.mt-4 { margin-top: 1rem; }
+.mb-2 { margin-bottom: 0.5rem; } /* From CourseGeneratorAI */
+.mb-4 { margin-bottom: 1rem; } /* From CourseSavingAndExport */
+.hidden { display: none !important; }
+.text-sm { font-size: 0.875rem; }
+.text-muted { color: var(--muted-foreground); }
+.w-full { width: 100%; } /* From CourseGeneratorAI */
+.grid { display: grid; } /* From CourseGeneratorAI */
+.grid-cols-1 { grid-template-columns: 1fr; } /* From CourseGeneratorAI */
+.md\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); } /* From CourseGeneratorAI */
+.text-center { text-align: center; } /* From CourseContentAndProgress */
+.justify-end { justify-content: flex-end; } /* From CourseSavingAndExport & CourseContentAndProgress */
+
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container { padding: 0.5rem; } /* Common */
+  .card-header, .card-content { padding: 1rem; } /* From CourseGeneratorAI, good general rule */
+  
+  h1 { font-size: 1.5rem; } /* Common */
+  h2 { font-size: 1.25rem; } /* Common */
+
+  .app-title { /* Common */
+    font-size: 1.25rem;
+    position: static;
+    transform: none;
+    text-align: center;
+    margin-top: 0.5rem;
+    max-width: 100%;
+  }
+  .app-header { flex-direction: column; } /* Common */
+  .header-actions { display: none; } /* Common */
+  
+  .tabs { font-size: 0.9rem; } /* Common */
+  .tab { padding: 0.5rem 1rem; flex-grow: 1; text-align: center; } /* Common */
+
+  .md\:grid-cols-2 { grid-template-columns: 1fr; } /* From CourseGeneratorAI, specific to its layout */
+  .flex.gap-2 { flex-direction: column; align-items: stretch; } /* From CourseGeneratorAI, specific to its layout */
+  
+  .card-footer { /* Responsive stacking for card footers if they exist */
+    flex-direction: column; 
+    align-items: stretch; 
+  }
+  .card-footer button { /* Buttons in stacked footer take full width */
+    width: 100%; 
+    margin-bottom: 0.5rem; 
+  }
+  .card-footer button:last-child { 
+    margin-bottom: 0; 
+  }
+
+  #alert-container { /* Common */
+    width: 90%; 
+    right: 5%; 
+    bottom: 0.5rem; 
+  }
+}

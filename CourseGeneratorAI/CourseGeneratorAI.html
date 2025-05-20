@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Course Generator AI - Input</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  /* Page-Specific styles for CourseGeneratorAI.html */
+
+  /* Topic selection */
+  .topic { 
+    border: 1px solid var(--border); 
+    border-radius: var(--radius); 
+    padding: 1rem; 
+    margin-bottom: 1rem; 
+    transition: background-color 0.2s; 
+    cursor: pointer; 
+  }
+  .topic.selected { 
+    background-color: rgba(0, 112, 243, 0.1); 
+    border-color: var(--primary); 
+  }
+  .topic-header { 
+    display: flex; 
+    align-items: center; 
+    margin-bottom: 0.5rem; 
+  }
+  .topic-checkbox { 
+    margin-right: 0.5rem; 
+  }
+  .topic-title { 
+    font-weight: 600; 
+    margin: 0; 
+  }
+  .topic-description { 
+    margin-bottom: 0.5rem; 
+    color: var(--muted-foreground); 
+  }
+  .topic-concepts { 
+    display: flex; 
+    flex-wrap: wrap; 
+    gap: 0.5rem; 
+  }
+  .concept-badge { 
+    background-color: var(--muted); 
+    padding: 0.25rem 0.5rem; 
+    border-radius: 9999px; 
+    font-size: 0.75rem; 
+  }
+  
+  /* Responsive adjustments if any are truly page-specific beyond common.css */
+  /* For instance, if .md\:grid-cols-2 was not general enough for common.css, it would stay here */
+  /* However, common.css attempts to make it general. If issues arise, we can move it back. */
+
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="app-header">
+      <div class="brand-logo">RPBedu</div>
+      <h1 class="app-title">CourseGeneratorAI</h1>
+      <div class="header-actions"></div> </header>
+
+  <nav class="tabs">
+    <a href="#" class="tab active">Input Details</a>
+    <a href="CourseContentAndProgress.html" class="tab">Course Content & Progress</a>
+    <a href="CourseSavingAndExport.html" class="tab">Saved Courses & Export</a>
+  </nav>
+  
+  <div class="card">
+    <div class="card-header">
+      <h2>Course Details</h2>
+      <p class="text-muted">Provide information about the course you want to generate</p>
+    </div>
+    <div class="card-content">
+      <form id="course-form">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+                <label for="provider">AI Provider</label>
+                <select id="provider" name="provider">
+                    <option value="openai">OpenAI</option>
+                    <option value="groq">Groq</option>
+                    <option value="anthropic">Anthropic</option>
+                    <option value="gemini">Google Gemini</option>
+                </select>
+            </div>
+            <div>
+                <label for="model">Model</label>
+                <select id="model" name="model">
+                    </select>
+            </div>
+        </div>
+        
+        <div class="mb-4">
+          <label for="api-key">API Key</label>
+          <input type="password" id="api-key" name="api-key" placeholder="Enter your API key">
+          <p class="text-sm text-muted">Your API key is required. It's only used for API calls and not stored.</p>
+        </div>
+        
+        <div class="mb-4">
+          <label for="title">Course Title</label>
+          <input type="text" id="title" name="title" placeholder="e.g., Introduction to Quantum Physics">
+        </div>
+        
+        <div class="mb-4">
+          <label for="description">Course Description</label>
+          <textarea id="description" name="description" placeholder="e.g., A course covering the fundamental principles..."></textarea>
+        </div>
+        
+        <div class="mb-4">
+          <label for="lecture-notes">Lecture Notes</label>
+          <textarea id="lecture-notes" name="lecture-notes" placeholder="Paste your lecture notes, syllabus, or relevant text here..." rows="10"></textarea>
+          <p class="text-sm text-muted">Provide the core content for course generation.</p>
+        </div>
+        
+        <div class="flex gap-2 mb-4">
+          <button type="button" id="generate-summary-btn" class="primary">Generate Summary</button>
+          <button type="button" id="extract-topics-btn">Extract Topics</button>
+          <button type="button" id="suggest-title-btn">Suggest Title & Description</button>
+        </div>
+        
+        <div id="summary-container" class="hidden">
+          <div class="card mb-4">
+            <div class="card-header"> <h3>Lecture Notes Summary</h3> </div>
+            <div class="card-content" id="summary-content"> </div>
+          </div>
+        </div>
+        
+        <div id="topics-container" class="hidden">
+          <div class="card mb-4">
+            <div class="card-header">
+              <h3>Extracted Topics</h3>
+              <p class="text-muted">Select topics to include in your course</p>
+            </div>
+            <div class="card-content">
+              <div id="topics-list"> </div>
+              <button type="button" id="generate-from-topics-btn" class="primary mt-4 w-full">Generate Course from Selected Topics & View</button>
+            </div>
+          </div>
+        </div>
+        
+        <div id="alert-container"></div>
+        
+        <button type="submit" id="generate-course-btn" class="primary w-full">Generate Course from Full Notes & View</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="common.js"></script> 
+<script>
+  // --- App State (Minimal for this page) ---
+  const state = {
+    isGenerating: false,
+    noteSummary: null,
+    extractedTopics: [], // Structure: [{ title, description, keyConcepts, selected }]
+  };
+  
+  // --- DOM Element References ---
+  const elements = {
+    courseForm: document.getElementById('course-form'),
+    providerSelect: document.getElementById('provider'),
+    modelSelect: document.getElementById('model'),
+    apiKeyInput: document.getElementById('api-key'),
+    titleInput: document.getElementById('title'),
+    descriptionInput: document.getElementById('description'),
+    lectureNotesInput: document.getElementById('lecture-notes'),
+    generateCourseBtn: document.getElementById('generate-course-btn'),
+    generateSummaryBtn: document.getElementById('generate-summary-btn'),
+    extractTopicsBtn: document.getElementById('extract-topics-btn'),
+    suggestTitleBtn: document.getElementById('suggest-title-btn'),
+    generateFromTopicsBtn: document.getElementById('generate-from-topics-btn'),
+    summaryContainer: document.getElementById('summary-container'),
+    summaryContent: document.getElementById('summary-content'),
+    topicsContainer: document.getElementById('topics-container'),
+    topicsList: document.getElementById('topics-list'),
+    alertContainer: document.getElementById('alert-container'), 
+  };
+  
+  // --- Helper Functions (Page Specific) ---
+
+  function getFormData() {
+      return {
+          apiKey: elements.apiKeyInput.value.trim(),
+          title: elements.titleInput.value.trim(),
+          description: elements.descriptionInput.value.trim(),
+          lectureNotes: elements.lectureNotesInput.value.trim(),
+          provider: elements.providerSelect.value,
+          model: elements.modelSelect.value
+      };
+  }
+
+  async function handleGeneration(buttonElement, loadingText, processFunction) {
+      const { apiKey, lectureNotes } = getFormData();
+      if (!apiKey) { showAlert('Please enter API key.', 'error'); return; } 
+      if (buttonElement.id !== 'suggest-title-btn' && buttonElement.id !== 'generate-from-topics-btn' && !lectureNotes) {
+          showAlert('Please enter lecture notes.', 'error'); return;
+      }
+      if (buttonElement.id === 'generate-from-topics-btn' && (!state.extractedTopics?.length || !state.extractedTopics.some(t => t.selected))) { showAlert('Please extract and select topic(s).', 'error'); return; }
+
+      const originalText = buttonElement.innerHTML;
+      buttonElement.disabled = true;
+      buttonElement.innerHTML = `<span class="spinner"></span> ${loadingText}`;
+      if (elements.alertContainer) elements.alertContainer.innerHTML = ''; 
+
+      state.isGenerating = true;
+      try { await processFunction(buttonElement.id); } 
+      catch (error) { console.error(`Error (${loadingText}):`, error); showAlert(`Failed: ${error.message || 'Unknown error'}`, 'error'); }
+      finally { buttonElement.disabled = false; buttonElement.innerHTML = originalText; state.isGenerating = false; }
+  }
+
+   function populateModelSelect() {
+        const provider = elements.providerSelect.value;
+        const config = AI_PROVIDERS[provider]; 
+        const currentSelectedModel = elements.modelSelect.value; 
+        elements.modelSelect.innerHTML = '';
+        if (config?.models?.length) {
+            config.models.forEach(m => { const opt = document.createElement('option'); opt.value = m.id; opt.textContent = m.name; elements.modelSelect.appendChild(opt); });
+            if (config.models.some(m => m.id === currentSelectedModel)) {
+                elements.modelSelect.value = currentSelectedModel;
+            }
+            elements.modelSelect.disabled = false;
+        } else { elements.modelSelect.disabled = true; const opt = document.createElement('option'); opt.textContent = 'N/A'; elements.modelSelect.appendChild(opt); }
+    }
+
+  // --- Initialization ---
+  function init() {
+    loadPersistedData(); 
+    
+    elements.providerSelect.addEventListener('change', () => {
+        populateModelSelect();
+        saveInputDataToStorage(); 
+    });
+    elements.modelSelect.addEventListener('change', saveInputDataToStorage); 
+    elements.apiKeyInput.addEventListener('input', saveInputDataToStorage);
+    elements.titleInput.addEventListener('input', saveInputDataToStorage);
+    elements.descriptionInput.addEventListener('input', saveInputDataToStorage);
+    elements.lectureNotesInput.addEventListener('input', saveInputDataToStorage);
+
+
+    elements.courseForm.addEventListener('submit', (e) => { e.preventDefault(); handleGeneration(elements.generateCourseBtn, 'Generating Course...', generateCourseAndRedirect); });
+    elements.generateSummaryBtn.addEventListener('click', () => handleGeneration(elements.generateSummaryBtn, 'Generating Summary...', generateSummary));
+    elements.extractTopicsBtn.addEventListener('click', () => handleGeneration(elements.extractTopicsBtn, 'Extracting Topics...', extractTopics));
+    elements.suggestTitleBtn.addEventListener('click', () => handleGeneration(elements.suggestTitleBtn, 'Suggesting...', suggestTitleDescription));
+    elements.generateFromTopicsBtn.addEventListener('click', () => handleGeneration(elements.generateFromTopicsBtn, 'Generating from Topics...', generateCourseAndRedirect));
+  }
+
+  // --- Data Persistence ---
+  function saveInputDataToStorage() {
+      const data = getFormData(); 
+      localStorage.setItem('storedApiKey', data.apiKey);
+      localStorage.setItem('storedProvider', data.provider);
+      localStorage.setItem('storedModel', data.model);
+      localStorage.setItem('storedCourseTitle', data.title);
+      localStorage.setItem('storedCourseDescription', data.description);
+      localStorage.setItem('storedLectureNotes', data.lectureNotes);
+      if (state.noteSummary) localStorage.setItem('storedSummary', state.noteSummary);
+      else localStorage.removeItem('storedSummary');
+      if (state.extractedTopics.length > 0) localStorage.setItem('storedTopics', JSON.stringify(state.extractedTopics));
+      else localStorage.removeItem('storedTopics');
+      console.log(`SAVED to localStorage: Provider=${data.provider}, Model=${data.model}, APIKey Present=${!!data.apiKey}, Title=${data.title.substring(0,10)}...`);
+  }
+
+  function loadPersistedData() {
+      console.log("Attempting to load persisted data for CourseGeneratorAI.html...");
+      const storedApiKey = localStorage.getItem('storedApiKey');
+      const storedProvider = localStorage.getItem('storedProvider');
+      const storedModel = localStorage.getItem('storedModel');
+      const storedTitle = localStorage.getItem('storedCourseTitle');
+      const storedDescription = localStorage.getItem('storedCourseDescription');
+      const storedLectureNotes = localStorage.getItem('storedLectureNotes');
+      const storedSummary = localStorage.getItem('storedSummary');
+      const storedTopicsString = localStorage.getItem('storedTopics');
+
+      if (storedApiKey) elements.apiKeyInput.value = storedApiKey;
+      
+      if (storedProvider) {
+          elements.providerSelect.value = storedProvider;
+          populateModelSelect(); 
+          if (storedModel && Array.from(elements.modelSelect.options).some(opt => opt.value === storedModel)) {
+            elements.modelSelect.value = storedModel; 
+          }
+      } else {
+          populateModelSelect(); 
+      }
+
+      if (storedTitle) elements.titleInput.value = storedTitle;
+      if (storedDescription) elements.descriptionInput.value = storedDescription;
+      if (storedLectureNotes) elements.lectureNotesInput.value = storedLectureNotes;
+
+      if (storedSummary) {
+          state.noteSummary = storedSummary;
+          elements.summaryContent.innerHTML = `<p>${escapeHtml(state.noteSummary).replace(/\n/g, '<br>')}</p>`;
+          elements.summaryContainer.classList.remove('hidden');
+      }
+      if (storedTopicsString) {
+          try {
+              state.extractedTopics = JSON.parse(storedTopicsString); 
+              if (Array.isArray(state.extractedTopics) && state.extractedTopics.length > 0) {
+                  renderTopics(state.extractedTopics);
+                  elements.topicsContainer.classList.remove('hidden');
+              } else {
+                  state.extractedTopics = [];
+              }
+          } catch (e) {
+              console.error("Error parsing stored topics:", e);
+              state.extractedTopics = [];
+          }
+      }
+      console.log("Persisted data loading complete for CourseGeneratorAI.html.");
+  }
+
+
+  // --- AI Generation Functions ---
+  async function generateSummary() {
+    const { apiKey, provider, model, lectureNotes } = getFormData();
+    const messages = [ { role: 'system', content: 'Summarize notes concisely.' }, { role: 'user', content: `Summarize (200 words):\n\n${lectureNotes}` } ];
+    const response = await makeApiRequest(provider, apiKey, messages, model); 
+    elements.summaryContent.innerHTML = `<p>${escapeHtml(response).replace(/\n/g, '<br>')}</p>`; 
+    elements.summaryContainer.classList.remove('hidden');
+    state.noteSummary = response;
+    localStorage.setItem('storedSummary', state.noteSummary); 
+    showAlert('Summary generated.', 'success'); 
+  }
+
+  async function extractTopics() {
+    const { apiKey, provider, model, lectureNotes } = getFormData();
+    const messages = [ { role: 'system', content: 'Extract 3-7 topics (title, description, keyConcepts[]) as JSON: { "topics": [...] }. ONLY JSON.' }, { role: 'user', content: `Notes:\n${lectureNotes}` } ];
+    const response = await makeApiRequest(provider, apiKey, messages, model); 
+    const data = safeJsonParse(response); 
+    if (!Array.isArray(data?.topics)) throw new Error("Invalid topics data.");
+    state.extractedTopics = data.topics.map(t => ({ ...t, selected: true }));
+    renderTopics(state.extractedTopics);
+    elements.topicsContainer.classList.remove('hidden');
+    localStorage.setItem('storedTopics', JSON.stringify(state.extractedTopics)); 
+    showAlert('Topics extracted.', 'success'); 
+  }
+  
+  function renderTopics(topics) {
+    if (!elements.topicsList || !Array.isArray(topics)) return;
+    elements.topicsList.innerHTML = topics.map((topic, index) => `
+      <div class="topic ${topic.selected ? 'selected' : ''}" data-index="${index}">
+        <div class="topic-header">
+          <input type="checkbox" class="checkbox topic-checkbox" ${topic.selected ? 'checked' : ''} data-index="${index}">
+          <h4 class="topic-title" style="margin:0 0 0 .5rem;">${escapeHtml(topic.title||'Untitled')}</h4>
+        </div>
+        <p class="topic-description text-sm text-muted">${escapeHtml(topic.description||'N/A')}</p>
+        ${topic.keyConcepts?.length ? `<div class="topic-concepts">${topic.keyConcepts.map(c => `<span class="concept-badge">${escapeHtml(c)}</span>`).join('')}</div>` : ''}
+      </div>`).join(''); 
+    elements.topicsList.querySelectorAll('.topic-checkbox').forEach(cb => { cb.removeEventListener('change', handleTopicSelectionChange); cb.addEventListener('change', handleTopicSelectionChange); });
+    elements.topicsList.querySelectorAll('.topic').forEach(div => { div.removeEventListener('click', handleTopicDivClick); div.addEventListener('click', handleTopicDivClick); });
+  }
+
+  function handleTopicDivClick(e) { if (e.target.type !== 'checkbox') { const cb = e.currentTarget.querySelector('.topic-checkbox'); if(cb) { cb.checked = !cb.checked; handleTopicSelectionChange({ target: cb }); } } }
+  function handleTopicSelectionChange(e) { const cb = e.target; const idx = parseInt(cb.dataset.index); if (idx >= 0 && idx < state.extractedTopics.length) { state.extractedTopics[idx].selected = cb.checked; cb.closest('.topic')?.classList.toggle('selected', cb.checked); localStorage.setItem('storedTopics', JSON.stringify(state.extractedTopics)); } }
+
+  async function suggestTitleDescription() {
+    const { apiKey, provider, model, lectureNotes } = getFormData();
+    const messages = [ { role: 'system', content: 'Suggest title & description as JSON: { "title": "...", "description": "..." }. ONLY JSON.' }, { role: 'user', content: `Notes:\n${lectureNotes.substring(0, 3000)}...` } ];
+    const response = await makeApiRequest(provider, apiKey, messages, model); 
+    const suggestions = safeJsonParse(response); 
+    if (suggestions.title) elements.titleInput.value = suggestions.title;
+    if (suggestions.description) elements.descriptionInput.value = suggestions.description;
+    showAlert('Title & description suggested.', 'success'); 
+  }
+
+  function createCourseGenerationMessages(type = 'notes') {
+      const { title, description, lectureNotes } = getFormData();
+      if (!title || !description) throw new Error("Title and Description required.");
+      const baseSystemPrompt = 'Generate course structure (title, description, learningObjectives[], modules[{title, description, lessons[{title, content, activities[], resources[]}]}]) as JSON. Respond ONLY with valid JSON.';
+      const jsonStructureExample = `{ "title": "...", "description": "...", "learningObjectives": ["..."], "modules": [...] }`; 
+
+      if (type === 'topics') {
+          const selectedTopics = state.extractedTopics?.filter(t => t.selected !== false);
+          if (!selectedTopics?.length) throw new Error("No topics selected.");
+          const topicDetails = selectedTopics.map(t => `Topic: ${t.title}\nDesc: ${t.description}\nConcepts: ${t.keyConcepts?.join(', ') || 'N/A'}`).join('\n\n');
+          const userPrompt = `Title: ${title}\nDesc: ${description}\n\nGenerate course from topics:\n${topicDetails}\n\n${state.noteSummary ? `Summary:\n${state.noteSummary}` : ''}\n\nFormat JSON: ${jsonStructureExample}`;
+          return [{ role: 'system', content: baseSystemPrompt }, { role: 'user', content: userPrompt }];
+      } else { 
+          if (!lectureNotes) throw new Error("Lecture notes required.");
+          const userPrompt = `Title: ${title}\nDesc: ${description}\n\nNotes:\n${lectureNotes}\n\nGenerate course structure. Format JSON: ${jsonStructureExample}`;
+          return [{ role: 'system', content: baseSystemPrompt }, { role: 'user', content: userPrompt }];
+      }
+  }
+
+  async function generateCourseAndRedirect(triggerId) {
+      const generationType = triggerId === 'generate-from-topics-btn' ? 'topics' : 'notes';
+      const { apiKey, provider, model } = getFormData(); 
+      const messages = createCourseGenerationMessages(generationType); 
+      
+      console.log(`Generating course using ${provider} / ${model} from ${generationType}`);
+      
+      const response = await makeApiRequest(provider, apiKey, messages, model); 
+      const courseData = safeJsonParse(response); 
+
+      if (!courseData || !courseData.title || !Array.isArray(courseData.modules)) {
+        throw new Error("Invalid course data received from API.");
+      }
+
+      saveInputDataToStorage(); 
+      localStorage.setItem('pendingCourseData', JSON.stringify(courseData)); 
+
+      console.log("Redirecting to CourseContentAndProgress.html");
+      window.location.href = 'CourseContentAndProgress.html';
+  }
+  
+  // --- App Initialization ---
+  document.addEventListener('DOMContentLoaded', init);
+
+</script> 
+</body>
+</html>

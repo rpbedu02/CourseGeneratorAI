@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Course Generator AI - Content & Progress</title>
+<link rel="stylesheet" href="common.css">
+<style>
+  /* Page-Specific styles for CourseContentAndProgress.html */
+
+  html { scroll-behavior: smooth; } /* Already in common, but often kept for page-specific overrides if needed */
+
+  /* h5, h6 were made common, but if very specific overrides are needed they could be here. Assuming common is fine. */
+  
+  /* Inner Tabs (Result View) - These are specific enough to keep here */
+   .inner-tabs { 
+     display: flex; 
+     border-bottom: 1px solid var(--border); 
+     margin-bottom: 0; 
+     background-color: var(--muted); 
+     border-top-left-radius: var(--radius); 
+     border-top-right-radius: var(--radius); 
+    }
+   .inner-tab { 
+     padding: 0.6rem 1.2rem; 
+     cursor: pointer; 
+     border-bottom: 2px solid transparent; 
+     font-size: 0.9rem; 
+     color: var(--muted-foreground); 
+    }
+   .inner-tab.active { 
+     border-bottom-color: var(--primary); 
+     color: var(--primary); 
+     background-color: var(--background); 
+     border-top-left-radius: var(--radius); 
+     border-top-right-radius: var(--radius); 
+     font-weight: 500; 
+    }
+   .inner-tab-content { 
+     display: none; 
+     padding: 1.5rem; 
+     border: 1px solid var(--border); 
+     border-top: none; 
+     border-bottom-left-radius: var(--radius); 
+     border-bottom-right-radius: var(--radius); 
+     margin-bottom: 1.5rem; 
+    }
+   .inner-tab-content.active { 
+     display: block; 
+    }
+
+  /* Course specific - These are unique to this page */
+  .course-header { 
+    margin-bottom: 1rem; 
+    padding-bottom: 1rem; 
+    border-bottom: 1px solid var(--border); 
+  }
+  .course-title { 
+    font-size: 1.8rem; 
+    margin-top: 0; 
+    margin-bottom: 0.5rem; 
+  }
+  .course-description { 
+    color: var(--muted-foreground); 
+    margin-bottom: 1rem; 
+    font-size: 0.95rem; 
+  }
+  .learning-objectives { 
+    background-color: var(--muted); 
+    padding: 1rem; 
+    border-radius: var(--radius); 
+    margin-bottom: 1.5rem; 
+    border: 1px solid var(--border); 
+  }
+  .learning-objectives h3 { 
+    margin-top: 0; 
+    font-size: 1.1rem; 
+  }
+
+  /* Table of Contents - Unique to this page */
+   .toc { 
+     background-color: var(--accent); 
+     padding: 1rem; 
+     border-radius: var(--radius); 
+     margin-bottom: 1.5rem; 
+     border: 1px solid var(--border); 
+    }
+   .toc h3 { 
+     margin-top: 0; 
+     font-size: 1.1rem; 
+    }
+   .toc-list { 
+     list-style-type: none; 
+     padding-left: 0; 
+    }
+   .toc-module { 
+     margin-bottom: 0.5rem; 
+    }
+   .toc-module-title { 
+     font-weight: 600; 
+    }
+   .toc-lessons { 
+     list-style-type: none; 
+     padding-left: 1.5rem; 
+     margin-top: 0.3rem; 
+     font-size: 0.9rem; 
+    }
+   .toc-lesson a { 
+     color: var(--foreground); 
+    }
+   .toc-lesson a:hover { 
+     color: var(--primary); 
+    }
+
+  .module { 
+    margin-bottom: 1.5rem; 
+    border: 1px solid var(--border); 
+    border-radius: var(--radius); 
+    overflow: hidden; 
+  }
+  .module-header { 
+    background-color: var(--muted); 
+    padding: 0.8rem 1.2rem; 
+    border-bottom: 1px solid var(--border); 
+    cursor: pointer; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+  }
+  .module-header h4 { 
+    margin: 0; 
+    font-size: 1.1rem; 
+  }
+  .module-content { 
+    padding: 1.5rem; 
+    display: none; /* Start collapsed */ 
+  }
+  .lesson { 
+    padding: 1.5rem 0; 
+    border-bottom: 1px solid var(--border); 
+  }
+  .lesson:last-child { 
+    border-bottom: none; 
+  }
+  .lesson-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 1rem; 
+  }
+  .lesson-title { 
+    display: flex; 
+    align-items: center; 
+  }
+  .lesson-title h5 { 
+    margin: 0; 
+    font-size: 1.05rem; 
+  }
+  .lesson-number { 
+    background-color: var(--primary); 
+    color: var(--primary-foreground); 
+    padding: 0.25rem 0.5rem; 
+    border-radius: 0.25rem; 
+    margin-right: 0.75rem; 
+    font-size: 0.875rem; 
+  }
+  .lesson-content { 
+    margin-bottom: 1.5rem; 
+  }
+  .activities, .resources { 
+    margin-top: 1.5rem; 
+    padding-left: 1rem; 
+  }
+  .activities h6, .resources h6 { 
+    margin-top: 0; 
+    margin-bottom: 0.5rem; 
+    font-size: 1rem; 
+  }
+
+  /* Quiz styles - Unique to this page */
+  .quiz-placeholder { 
+    margin-top: 1.5rem; 
+  }
+  .quiz-modal { 
+    position: fixed; 
+    top: 0; left: 0; right: 0; bottom: 0; 
+    background-color: rgba(0, 0, 0, 0.6); 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    z-index: 1050; 
+    opacity: 0; 
+    visibility: hidden; 
+    transition: opacity 0.3s, visibility 0.3s; 
+  }
+  .quiz-modal.visible { 
+    opacity: 1; 
+    visibility: visible; 
+  }
+  .quiz-modal-content { 
+    width: 90%; 
+    max-width: 700px; 
+    max-height: 90vh; 
+    overflow-y: auto; 
+    background-color: var(--background); 
+    border-radius: var(--radius); 
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); 
+    display: flex; 
+    flex-direction: column; 
+  }
+  .quiz-modal-header { 
+    padding: 1rem 1.5rem; 
+    border-bottom: 1px solid var(--border); 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+  }
+  .quiz-modal-title { 
+    margin: 0; 
+    font-size: 1.25rem; 
+  }
+  .quiz-modal-close { 
+    background: none; 
+    border: none; 
+    font-size: 1.5rem; 
+    cursor: pointer; 
+    color: var(--muted-foreground); 
+    padding: 0.5rem; 
+    line-height: 1; 
+  }
+  .quiz-modal-body { 
+    padding: 1.5rem; 
+    flex-grow: 1; 
+  }
+  .quiz { 
+    background-color: transparent; 
+    border: none; 
+    padding: 0; 
+    margin: 0; 
+  }
+  .quiz-title { /* This class seems unused in the dynamic quiz generation */
+    font-size: 1.25rem; 
+    margin-bottom: 1rem; 
+    text-align: center; 
+  }
+  .quiz-question { 
+    margin-bottom: 1.5rem; 
+  }
+  .quiz-options { 
+    list-style-type: none; 
+    padding-left: 0; 
+  }
+  .quiz-option { 
+    padding: 0.75rem; 
+    border: 1px solid var(--border); 
+    border-radius: 0.25rem; 
+    margin-bottom: 0.5rem; 
+    cursor: pointer; 
+    display: flex; 
+    align-items: center; 
+    transition: background-color 0.2s, border-color 0.2s; 
+  }
+  .quiz-option:hover { 
+    background-color: var(--accent); 
+  }
+  .quiz-option.selected { 
+    border-color: var(--primary); 
+    background-color: rgba(0, 112, 243, 0.1); 
+  }
+  .quiz-option.correct { 
+    border-color: var(--success); 
+    background-color: rgba(16, 185, 129, 0.1); 
+  }
+  .quiz-option.incorrect { 
+    border-color: var(--destructive); 
+    background-color: rgba(239, 68, 68, 0.1); 
+  }
+  .quiz-option.disabled { 
+    pointer-events: none; 
+    opacity: 0.7; 
+  }
+  .quiz-explanation { 
+    margin-top: 1rem; 
+    padding: 1rem; 
+    background-color: rgba(0, 0, 0, 0.05); 
+    border-radius: 0.25rem; 
+    border: 1px dashed #ccc; 
+  }
+  .quiz-progress { 
+    height: 0.5rem; 
+    background-color: var(--border); 
+    border-radius: 9999px; 
+    margin-bottom: 1rem; 
+    overflow: hidden; 
+  }
+  .quiz-progress-bar { 
+    height: 100%; 
+    background-color: var(--primary); 
+    transition: width 0.3s ease; 
+  }
+  .quiz-result { 
+    text-align: center; 
+    padding: 2rem; 
+  }
+  .quiz-score { 
+    font-size: 2rem; 
+    font-weight: bold; 
+    margin-bottom: 1rem; 
+  }
+  .quiz-controls { 
+    margin-top: 1.5rem; 
+    display: flex; 
+    justify-content: space-between; 
+  }
+
+  /* Debugging Area - Unique to this page */
+  .debug-area {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background-color: #fffbe6; 
+      border: 1px dashed #facc15; 
+      border-radius: var(--radius);
+      font-size: 0.8rem;
+      color: #78350f; 
+      white-space: pre-wrap; 
+      word-break: break-all; 
+      max-height: 150px; 
+      overflow-y: auto; 
+  }
+
+  /* Responsive adjustments specific to this page (beyond common.css) */
+  @media (max-width: 768px) {
+    /* .container, h1, h2, .app-title, .app-header, .header-actions, .tabs, .tab, #alert-container are handled by common.css */
+    
+    .inner-tab { 
+      padding: 0.5rem 1rem; 
+    }
+    .inner-tab-content { 
+      padding: 1rem; 
+    }
+    .quiz-modal-content { 
+      width: 95%; 
+    }
+    #course-actions.flex.gap-2 { /* Target more specifically if it's not a card-footer */
+        flex-direction: column;
+        align-items: stretch;
+    }
+    #course-actions.flex.gap-2 button {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    #course-actions.flex.gap-2 button:last-child {
+        margin-bottom: 0;
+    }
+    .lesson-ai-action-buttons {
+        flex-direction: column; /* Stack buttons vertically on small screens */
+    }
+    .lesson-ai-action-buttons button {
+        width: 100%; /* Make buttons full width in column layout */
+    }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header class="app-header">
+      <div class="brand-logo">RPBedu</div>
+      <h1 class="app-title">CourseGeneratorAI</h1>
+      <div class="header-actions"></div>
+  </header>
+
+  <nav class="tabs">
+    <a href="CourseGeneratorAI.html" class="tab">Input Details</a>
+    <a href="#" class="tab active">Course Content & Progress</a>
+    <a href="CourseSavingAndExport.html" class="tab">Saved Courses & Export</a>
+  </nav>
+
+  <div id="main-content">
+      <div class="inner-tabs">
+          <div class="inner-tab active" data-inner-tab="course-view">Course Content</div>
+          <div class="inner-tab" data-inner-tab="progress-view">Your Progress</div>
+      </div>
+
+      <div class="inner-tab-content active" id="course-view-content">
+          <div id="toc-container" class="toc hidden">
+              <h3>Table of Contents</h3>
+              <ul id="toc-list" class="toc-list"></ul>
+          </div>
+          <div id="course-display-area">
+              <p class="text-center text-muted">Loading course content...</p>
+          </div>
+          <div class="flex justify-end gap-2 mt-4" id="course-actions">
+              <button id="generate-quizzes-btn" disabled>Generate Quizzes</button>
+              <button id="expand-topics-btn" disabled>Expand All Topics</button>
+              <button id="manage-save-export-btn" disabled>Manage Save/Export</button>
+          </div>
+      </div>
+
+      <div class="inner-tab-content" id="progress-view-content">
+          <h2>Your Progress</h2>
+          <p class="text-muted">Progress tracking features are under development.</p>
+          <div id="progress-details">
+              </div>
+      </div>
+  </div>
+   <div id="alert-container"></div>
+
+</div>
+<div id="quiz-modal" class="quiz-modal">
+    <div class="quiz-modal-content">
+        <div class="quiz-modal-header">
+            <h3 id="quiz-modal-title" class="quiz-modal-title">Lesson Quiz</h3>
+            <button id="quiz-modal-close" class="quiz-modal-close" aria-label="Close quiz">&times;</button>
+        </div>
+        <div id="quiz-modal-body" class="quiz-modal-body">
+            <div id="quiz-area">
+                <div id="quiz-progress" class="quiz-progress"><div class="quiz-progress-bar" style="width: 0%;"></div></div>
+                <div id="quiz-questions-container">
+                    </div>
+                <div class="quiz-controls mt-4">
+                    <button id="submit-quiz-btn" class="primary" disabled style="display: none;">Submit Answer</button>
+                    <button id="next-question-btn" style="display: none;">Next Question</button>
+                </div>
+                <div id="quiz-result" class="quiz-result" style="display: none;">
+                    <h4>Complete!</h4>
+                    <p class="quiz-score">Score: <span class="score-value">0</span>%</p>
+                    <p class="quiz-feedback"></p>
+                    <button id="retake-quiz-btn" class="mt-2">Retake Quiz</button>
+                </div>
+                <div id="quiz-debug-area" class="debug-area">
+                    <strong>Debug Info:</strong><br>
+                    Current State: Loading...
+                    <div id="debug-log"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-4 text-center">
+    <button id="start-test-quiz-debug-btn" class="button">Start Test Quiz (Debug)</button>
+</div>
+
+<script src="common.js"></script>
+<script>
+  // --- App State ---
+  const state = {
+    activeInnerTab: 'course-view',
+    courseContent: null,
+    currentCourseId: null,
+    quizAnswers: {},
+    apiKey: null,
+    provider: null,
+    model: null,
+    isGenerating: false,
+    currentQuizMeta: null, 
+    debugLog: [] 
+  };
+
+  // --- Hardcoded Test Quiz ---
+  const testQuizData = {
+      title: "Test Quiz",
+      questions: [
+          {
+              question: "What is 2 + 2?",
+              options: ["3", "4", "5", "6"],
+              correctAnswer: 1, 
+              explanation: "2 + 2 equals 4. This is basic arithmetic."
+          },
+          {
+              question: "Which planet is known as the Red Planet?",
+              options: ["Earth", "Mars", "Venus", "Jupiter"],
+              correctAnswer: 1, 
+              explanation: "Mars is often called the Red Planet because of its reddish appearance caused by iron oxide on its surface."
+          },
+          {
+              question: "What is the capital of France?",
+              options: ["Berlin", "Madrid", "Paris", "Rome"],
+              correctAnswer: 2, 
+              explanation: "Paris is the capital and most populous city of France."
+          }
+      ]
+  };
+
+
+  // --- DOM Element References ---
+  const elements = {
+    innerTabs: document.querySelectorAll('.inner-tab'),
+    innerTabContents: document.querySelectorAll('.inner-tab-content'),
+    tocContainer: document.getElementById('toc-container'),
+    tocList: document.getElementById('toc-list'),
+    courseDisplayArea: document.getElementById('course-display-area'),
+    progressDetails: document.getElementById('progress-details'),
+    generateQuizzesBtn: document.getElementById('generate-quizzes-btn'),
+    expandTopicsBtn: document.getElementById('expand-topics-btn'),
+    manageSaveExportBtn: document.getElementById('manage-save-export-btn'),
+    quizModal: document.getElementById('quiz-modal'),
+    quizModalTitle: document.getElementById('quiz-modal-title'),
+    quizModalBody: document.getElementById('quiz-modal-body'),
+    quizModalClose: document.getElementById('quiz-modal-close'),
+    alertContainer: document.getElementById('alert-container'), 
+    mainContent: document.getElementById('main-content'),
+    quizArea: document.getElementById('quiz-area'),
+    quizProgress: document.getElementById('quiz-progress'),
+    quizProgressBar: document.querySelector('#quiz-progress .quiz-progress-bar'),
+    quizQuestionsContainer: document.getElementById('quiz-questions-container'),
+    submitQuizBtn: document.getElementById('submit-quiz-btn'),
+    nextQuestionBtn: document.getElementById('next-question-btn'),
+    quizResult: document.getElementById('quiz-result'),
+    quizScoreValue: document.querySelector('#quiz-result .score-value'),
+    quizFeedback: document.querySelector('#quiz-result .quiz-feedback'),
+    retakeQuizBtn: document.getElementById('retake-quiz-btn'),
+    quizDebugArea: document.getElementById('quiz-debug-area'), 
+    debugLog: document.getElementById('debug-log'), 
+    startTestQuizDebugBtn: document.getElementById('start-test-quiz-debug-btn')
+  };
+
+  // --- Helper Functions (Page Specific) ---
+  function updateDebugInfo(message = null) {
+      if (elements.quizDebugArea) {
+          if (message) {
+              state.debugLog.push(`${new Date().toLocaleTimeString()}: ${message}`);
+              if (state.debugLog.length > 20) {
+                  state.debugLog.shift();
+              }
+          }
+          elements.quizDebugArea.innerHTML = `
+              <strong>Debug Info:</strong><br>
+              Current Quiz Meta: ${JSON.stringify(state.currentQuizMeta, null, 2) || 'null'}<br>
+              Quiz Answers: ${JSON.stringify(state.quizAnswers, null, 2) || '{}'}<br>
+              <strong>Log:</strong><br>
+              ${state.debugLog.join('<br>')}
+          `;
+          elements.quizDebugArea.scrollTop = elements.quizDebugArea.scrollHeight;
+      }
+  }
+
+  async function handleGeneration(buttonElement, loadingText, processFunction) {
+      if (!state.apiKey) { showAlert('API configuration not found. Please start from the Input Details page.', 'error'); return; }
+      
+      if (buttonElement.id === 'generate-quizzes-btn' && !state.courseContent?.modules?.length) { showAlert('No course content loaded.', 'info'); return; }
+      if (buttonElement.id === 'expand-topics-btn' && !state.courseContent?.modules?.length) { showAlert('No course content loaded.', 'info'); return; }
+
+      const originalText = buttonElement.innerHTML;
+      buttonElement.disabled = true;
+      buttonElement.innerHTML = `<span class="spinner"></span> ${loadingText}`;
+      if (elements.alertContainer) elements.alertContainer.innerHTML = ''; 
+      state.isGenerating = true;
+      try { await processFunction(); }
+      catch (error) {
+          console.error(`Error (${loadingText}):`, error);
+          let displayError = error.message || 'Unknown error.';
+          if (error.message.toLowerCase().includes("api key") || error.message.toLowerCase().includes("auth")) displayError = "Authentication failed. Check API key.";
+          else if (error.message.toLowerCase().includes("quota") || error.message.toLowerCase().includes("limit")) displayError = "API limit/quota reached.";
+          else if (error.message.toLowerCase().includes("blocked")) displayError = "Request blocked by AI provider.";
+          else if (error.message.toLowerCase().includes("parse ai response") || error.message.toLowerCase().includes("incorrect question structure")) displayError = "AI response format error. Could not generate valid quiz.";
+          showAlert(`Failed: ${displayError}`, 'error');
+      } finally { buttonElement.disabled = false; buttonElement.innerHTML = originalText; state.isGenerating = false; }
+  }
+
+  // --- Initialization ---
+  function init() {
+    console.log("CourseContentAndProgress.html: Initializing...");
+    updateDebugInfo("Initializing app.");
+    loadApiInfoFromStorage();
+    loadCourseDataFromStorage();
+    setupEventListeners();
+    switchInnerTab('course-view');
+    updateDebugInfo("Initialization complete.");
+  }
+
+  function setupEventListeners() {
+     elements.innerTabs.forEach(tab => { tab.addEventListener('click', (e) => switchInnerTab(e.currentTarget.dataset.innerTab)); });
+     elements.quizModalClose.addEventListener('click', hideQuizModal);
+     elements.generateQuizzesBtn.addEventListener('click', () => handleGeneration(elements.generateQuizzesBtn, 'Generating Quizzes...', generateQuizzes));
+     elements.expandTopicsBtn.addEventListener('click', () => handleGeneration(elements.expandTopicsBtn, 'Expanding Content...', expandAllTopics));
+     elements.manageSaveExportBtn.addEventListener('click', navigateToSaveExport);
+     elements.mainContent.addEventListener('click', handleMainContentClicks);
+     elements.submitQuizBtn.addEventListener('click', handleSubmitQuizClick);
+     elements.nextQuestionBtn.addEventListener('click', handleNextQuestionClick);
+     elements.retakeQuizBtn.addEventListener('click', handleRetakeQuizClick);
+     elements.quizQuestionsContainer.addEventListener('click', handleQuizOptionClick);
+     elements.startTestQuizDebugBtn.addEventListener('click', handleStartTestQuizDebugClick);
+  }
+
+  // --- Data Loading ---
+  function loadApiInfoFromStorage() {
+      console.log("Attempting to load API info from localStorage...");
+      updateDebugInfo("Loading API info from localStorage.");
+      try {
+          state.apiKey = localStorage.getItem('storedApiKey');
+          state.provider = localStorage.getItem('storedProvider');
+          state.model = localStorage.getItem('storedModel');
+          if (!state.apiKey || !state.provider || !state.model) {
+              console.warn("API info not found in localStorage using 'stored*' keys. API-dependent features will be disabled.");
+              updateDebugInfo("API info not found.");
+              disableActionButtons(); 
+              showAlert("API configuration not found. AI-dependent features are disabled. Please start from the Input Details page.", "info", 0); 
+          } else {
+              console.log(`API Info Loaded: Provider=${state.provider}, Model=${state.model}, Key Present=${!!state.apiKey}`);
+               updateDebugInfo(`API Info Loaded: Provider=${state.provider}, Model=${state.model}, Key Present=${!!state.apiKey}`);
+          }
+      } catch (error) {
+           console.error("Error loading API info from localStorage:", error);
+           updateDebugInfo(`Error loading API info: ${error.message}`);
+           showAlert("Could not load necessary API configuration.", "error"); 
+           disableActionButtons(); 
+      }
+  }
+
+  function loadCourseDataFromStorage() {
+      console.log("Attempting to load course data from localStorage...");
+      updateDebugInfo("Loading course data from localStorage.");
+      try {
+          const courseDataString = localStorage.getItem('pendingCourseData') || localStorage.getItem('courseToManage');
+          if (courseDataString) {
+              state.courseContent = JSON.parse(courseDataString); 
+              localStorage.removeItem('pendingCourseData'); 
+              if (state.courseContent?.title) {
+                  console.log("Course data loaded successfully:", state.courseContent);
+                  updateDebugInfo("Course data loaded successfully.");
+                  renderCourseContent(state.courseContent);
+                  document.title = `${escapeHtml(state.courseContent.title)} - Content`; 
+                  if (state.apiKey) enableActionButtons(); 
+                  else {
+                      disableActionButtons(); 
+                      showAlert("API configuration not found. AI features disabled.", "info", 0); 
+                  }
+                  elements.manageSaveExportBtn.disabled = false;
+              } else { throw new Error("Invalid course structure in loaded data."); }
+          } else {
+              console.log("No course data found in localStorage.");
+              updateDebugInfo("No course data found.");
+              displayNoCourseMessage();
+          }
+      } catch (error) { console.error("Error loading/parsing course data:", error); updateDebugInfo(`Error loading course data: ${error.message}`); displayNoCourseMessage("Error loading course data."); disableActionButtons(); }
+  }
+
+  function displayNoCourseMessage(message = "No course data found. Generate one first.") {
+       if(elements.courseDisplayArea) elements.courseDisplayArea.innerHTML = `<p class="text-center text-muted">${escapeHtml(message)} <a href="CourseGeneratorAI.html">Go to Generator</a>.</p>`; 
+       elements.tocContainer?.classList.add('hidden');
+       disableActionButtons(); 
+  }
+
+  function enableActionButtons() { 
+      elements.generateQuizzesBtn.disabled = !state.apiKey;
+      elements.expandTopicsBtn.disabled = !state.apiKey;
+      elements.manageSaveExportBtn.disabled = false;
+  }
+  function disableActionButtons() { 
+       elements.generateQuizzesBtn.disabled = true;
+       elements.expandTopicsBtn.disabled = true;
+       elements.manageSaveExportBtn.disabled = true;
+  }
+
+  // --- Tab Management ---
+  function switchInnerTab(innerTabId) {
+      if (!innerTabId) return;
+      elements.innerTabs.forEach(tab => tab.classList.toggle('active', tab.dataset.innerTab === innerTabId));
+      elements.innerTabContents.forEach(content => content?.classList.toggle('active', content.id === innerTabId + '-content'));
+      state.activeInnerTab = innerTabId;
+  }
+
+  // --- Course Content Rendering ---
+  function renderCourseContent(course) {
+    if (!elements.courseDisplayArea) return;
+    if (!course || !course.title) { displayNoCourseMessage(); return; }
+
+    renderTOC(course);
+    elements.tocContainer?.classList.remove('hidden');
+
+    const courseHtml = `
+      <div class="course-header">
+        <h2 class="course-title" id="course-main-title">${escapeHtml(course.title)}</h2>
+        <p class="course-description">${escapeHtml(course.description || 'No description.')}</p>
+      </div>
+      ${course.learningObjectives?.length ? `<div class="learning-objectives"><h3>Objectives</h3><ul>${course.learningObjectives.map(o => `<li>${escapeHtml(o||'')}</li>`).join('')}</ul></div>` : ''}
+      <h3>Modules</h3>
+      <div class="modules">
+        ${(course.modules || []).map((module, modIdx) => `
+          <div class="module" id="module-${modIdx}">
+            <div class="module-header" data-module-id="${modIdx}">
+              <h4>${modIdx + 1}. ${escapeHtml(module.title || 'Untitled Module')}</h4>
+              <span class="module-toggle">▼</span>
+            </div>
+            <div class="module-content" id="module-content-${modIdx}" style="display: none;">
+              <p>${escapeHtml(module.description || 'No description.')}</p>
+              ${(module.lessons || []).map((lesson, lesIdx) => `
+                <div class="lesson" id="lesson-${modIdx}-${lesIdx}">
+                  <div class="lesson-header">
+                    <h5 class="lesson-title"><span class="lesson-number">${modIdx + 1}.${lesIdx + 1}</span>${escapeHtml(lesson.title || 'Untitled Lesson')}</h5>
+                  </div>
+                  <div class="lesson-content">${(lesson.content ? escapeHtml(lesson.content).replace(/\n/g, '<br>') : 'No content.')}</div>
+                  
+                  <div class="lesson-actions" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
+                    ${renderQuizButton(lesson.quiz, modIdx, lesIdx)}
+                    
+                    <div class="lesson-ai-action-buttons" style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button 
+                            class="generate-lesson-quiz-btn" 
+                            data-module-id="${modIdx}" 
+                            data-lesson-id="${lesIdx}" 
+                            title="${lesson.quiz && lesson.quiz.questions && lesson.quiz.questions.length > 0 && !lesson.quiz.error ? 'Regenerate Quiz for this lesson' : 'Generate New Quiz for this lesson'}"
+                            ${!state.apiKey ? 'disabled' : ''}>
+                            ${lesson.quiz && lesson.quiz.questions && lesson.quiz.questions.length > 0 && !lesson.quiz.error ? 'Regenerate Quiz' : 'Generate Quiz'}
+                        </button>
+                        <button 
+                            class="expand-lesson-content-btn" 
+                            data-module-id="${modIdx}" 
+                            data-lesson-id="${lesIdx}" 
+                            title="${!state.apiKey ? 'API key required to expand content' : (!lesson.content || lesson.content.length < 20 ? 'Lesson content is too short or missing to expand' : 'Expand Lesson Content using AI')}"
+                            ${!state.apiKey || !lesson.content || lesson.content.length < 20 ? 'disabled' : ''}>
+                            Expand Content
+                        </button>
+                    </div>
+                  </div>
+                </div>`).join('')}
+            </div>
+          </div>`).join('')}
+      </div>`;
+    elements.courseDisplayArea.innerHTML = courseHtml;
+  }
+
+  function renderTOC(course) {
+      if (!elements.tocList || !course?.modules) { elements.tocContainer?.classList.add('hidden'); return; }
+      elements.tocList.innerHTML = course.modules.map((module, modIdx) => `
+          <li class="toc-module">
+              <span class="toc-module-title">${modIdx + 1}. ${escapeHtml(module.title || 'Untitled Module')}</span>
+              ${module.lessons?.length ? `<ul class="toc-lessons">${module.lessons.map((lesson, lesIdx) => `<li class="toc-lesson"><a href="#lesson-${modIdx}-${lesIdx}" data-target-id="lesson-${modIdx}-${lesIdx}">${modIdx + 1}.${lesIdx + 1} ${escapeHtml(lesson.title || 'Untitled Lesson')}</a></li>`).join('')}</ul>` : ''}
+          </li>`).join(''); 
+  }
+
+  function renderQuizButton(quiz, moduleIndex, lessonIndex) {
+      if (quiz && quiz.questions?.length && !quiz.error) {
+          return `<div class="quiz-placeholder"><button class="start-quiz-btn primary" data-module-id="${moduleIndex}" data-lesson-id="${lessonIndex}">Start Quiz</button></div>`;
+      } else if (quiz?.error) {
+           return `<p class="text-sm text-muted alert alert-error">Quiz Error: ${escapeHtml(quiz.error)}</p>`; 
+      } else { return `<p class="text-sm text-muted">No quiz available for this lesson.</p>`; } 
+  }
+
+  // --- Event Delegation Handlers ---
+  function handleMainContentClicks(e) {
+      const moduleHeader = e.target.closest('.module-header');
+      const startQuizBtn = e.target.closest('.start-quiz-btn');
+      const tocLink = e.target.closest('.toc-lesson a');
+      const generateLessonQuizBtn = e.target.closest('.generate-lesson-quiz-btn');
+      const expandLessonContentBtn = e.target.closest('.expand-lesson-content-btn'); 
+
+      if (moduleHeader) { 
+          handleModuleHeaderClick(moduleHeader); 
+      } else if (startQuizBtn) { 
+          handleStartQuizClick(startQuizBtn); 
+      } else if (tocLink) { 
+          const targetId = tocLink.dataset.targetId; 
+          if(targetId) scrollToElement(e, targetId); 
+      } else if (generateLessonQuizBtn) {
+          const modId = parseInt(generateLessonQuizBtn.dataset.moduleId);
+          const lesId = parseInt(generateLessonQuizBtn.dataset.lessonId);
+          if (!isNaN(modId) && !isNaN(lesId)) {
+              handleGenerateSingleQuizClick(generateLessonQuizBtn, modId, lesId);
+          } else {
+              console.error("Invalid module/lesson ID for generate single quiz button.");
+              showAlert("Could not identify lesson for quiz generation.", "error");
+          }
+      } else if (expandLessonContentBtn) { 
+          const modId = parseInt(expandLessonContentBtn.dataset.moduleId);
+          const lesId = parseInt(expandLessonContentBtn.dataset.lessonId);
+          if (!isNaN(modId) && !isNaN(lesId)) {
+              handleExpandSingleLessonClick(expandLessonContentBtn, modId, lesId);
+          } else {
+              console.error("Invalid module/lesson ID for expand single lesson button.");
+              showAlert("Could not identify lesson for content expansion.", "error");
+          }
+      }
+  }
+
+  function handleQuizOptionClick(e) {
+       const quizOption = e.target.closest('.quiz-option');
+       if (quizOption) {
+           console.log("Quiz option clicked:", quizOption.textContent);
+           updateDebugInfo(`Quiz option clicked: ${quizOption.textContent}`);
+           if (quizOption.classList.contains('disabled')) {
+               console.log("Option click ignored (option is disabled).");
+               updateDebugInfo("Option click ignored (disabled).");
+               return;
+           }
+           const quizQuestionDiv = quizOption.closest('.quiz-question');
+           if (!quizQuestionDiv) {
+               console.log("Option click ignored (no question div found).");
+               updateDebugInfo("Option click ignored (no question div).");
+               return;
+           }
+           quizQuestionDiv.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+           quizOption.classList.add('selected');
+           elements.submitQuizBtn.disabled = false;
+           console.log("Submit button enabled.");
+           updateDebugInfo("Submit button enabled.");
+       }
+   }
+
+  // --- Specific Action Handlers ---
+  function handleModuleHeaderClick(headerElement) {
+    const moduleId = headerElement.getAttribute('data-module-id');
+    if (moduleId === null) { console.error("Module header clicked, but no data-module-id found."); return; }
+    const moduleContent = document.getElementById(`module-content-${moduleId}`);
+    const moduleToggle = headerElement.querySelector('.module-toggle');
+    if (!moduleContent || !moduleToggle) { console.error("Could not find content or toggle for module:", moduleId); return; }
+
+    console.log(`Toggling module ${moduleId}`);
+    updateDebugInfo(`Toggling module ${moduleId}`);
+    const isVisible = moduleContent.style.display === 'block';
+    moduleContent.style.display = isVisible ? 'none' : 'block';
+    moduleToggle.textContent = isVisible ? '▼' : '▲';
+  }
+
+  function handleStartTestQuizDebugClick() {
+      console.log("Start Test Quiz (Debug) button clicked.");
+      updateDebugInfo("Start Test Quiz (Debug) button clicked.");
+      if (testQuizData?.questions?.length) {
+          loadAndShowQuiz(testQuizData, -1, -1); 
+      } else {
+          showAlert("Test quiz data is not available.", "error"); 
+          updateDebugInfo("Test quiz data not available.");
+      }
+  }
+
+  function handleStartQuizClick(button) {
+      console.log("Start Quiz button clicked", button);
+      updateDebugInfo("Start Quiz button clicked.");
+      const modId = parseInt(button.dataset.moduleId);
+      const lesId = parseInt(button.dataset.lessonId);
+
+      const lesson = state.courseContent?.modules?.[modId]?.lessons?.[lesId];
+      if (lesson?.quiz && !lesson.quiz.error && lesson.quiz.questions?.length > 0) {
+          loadAndShowQuiz(lesson.quiz, modId, lesId);
+      } else {
+          console.error("Quiz data missing or invalid for:", modId, lesId, lesson?.quiz);
+          updateDebugInfo(`Quiz data missing or invalid for M${modId} L${lesId}.`);
+          showAlert("Quiz cannot be started. Data is missing or invalid.", "error"); 
+      }
+  }
+
+  function scrollToElement(event, elementId) {
+      event.preventDefault();
+      console.log("Attempting to scroll to:", elementId);
+      const element = document.getElementById(elementId);
+      if (element) {
+          const moduleElement = element.closest('.module');
+          if (moduleElement) {
+              const content = moduleElement.querySelector('.module-content');
+              const header = moduleElement.querySelector('.module-header');
+              if (content && header && content.style.display === 'none') {
+                  console.log("Expanding parent module for scroll:", header.dataset.moduleId);
+                  handleModuleHeaderClick(header);
+              }
+          }
+          setTimeout(() => {
+              console.log("Executing scrollIntoView for:", elementId);
+              element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 50);
+      } else {
+          console.warn("Target element for scroll not found:", elementId);
+      }
+  }
+
+  // --- New Function: Wrapper for generating a single quiz ---
+  async function handleGenerateSingleQuizClick(buttonElement, modId, lesId) {
+      console.log(`handleGenerateSingleQuizClick called for M${modId}, L${lesId}`);
+      const lesson = state.courseContent?.modules?.[modId]?.lessons?.[lesId];
+      if (!lesson || !lesson.content || lesson.content.length < 20) { 
+          showAlert("Lesson content is too short or missing to generate a quiz.", "info");
+          return;
+      }
+      const originalButtonText = buttonElement.textContent.trim();
+      const loadingText = originalButtonText === 'Generate Quiz' ? 'Generating Quiz...' : 'Regenerating Quiz...';
+
+      await handleGeneration(
+          buttonElement,
+          loadingText,
+          () => generateSingleQuiz(modId, lesId) 
+      );
+  }
+
+  // --- New Function: Generates a quiz for a single lesson ---
+  async function generateSingleQuiz(moduleIndex, lessonIndex) {
+      console.log(`Generating single quiz for M${moduleIndex + 1} L${lessonIndex + 1}`);
+      updateDebugInfo(`Attempting to generate single quiz for M${moduleIndex + 1} L${lessonIndex + 1}.`);
+
+      if (!state.courseContent?.modules?.[moduleIndex]?.lessons?.[lessonIndex]) {
+          throw new Error('Lesson data not found for quiz generation.');
+      }
+      const module = state.courseContent.modules[moduleIndex];
+      const lesson = module.lessons[lessonIndex];
+
+      if (!lesson.content || lesson.content.length < 50) { 
+          showAlert('Lesson content is too short to generate a meaningful quiz.', 'info');
+          updateDebugInfo(`Single quiz generation skipped for M${moduleIndex+1}L${lessonIndex+1}: content too short.`);
+          renderCourseContent(state.courseContent);
+          return; 
+      }
+
+      const messages = [
+          { role: 'system', content: 'Create a 3-5 question multiple-choice quiz (4 options, 1 correct index 0-3, explanation) as JSON: {"title": "Quiz: ...", "questions": [...]}. Respond ONLY with valid JSON.' },
+          { role: 'user', content: `Lesson: "${lesson.title}" (Module: "${module.title}"). Content: ${(lesson.content || '').substring(0, 1500)}...` }
+      ];
+
+      try {
+          const response = await makeApiRequest(state.provider, state.apiKey, messages, state.model);
+          const quizData = safeJsonParse(response);
+
+          const isValidQuiz = quizData?.questions?.length > 0 &&
+                               quizData.questions.every(q => {
+                                   const hasCorrectAnswer = q.hasOwnProperty('correctAnswer');
+                                   const hasCorrectIndex = q.hasOwnProperty('correctIndex');
+                                   const hasAnswer = q.hasOwnProperty('answer');
+                                   const correctIdx = hasCorrectAnswer ? q.correctAnswer : (hasCorrectIndex ? q.correctIndex : (hasAnswer ? q.answer : undefined));
+
+                                   return q.hasOwnProperty('question') && typeof q.question === 'string' && q.question.length > 0 &&
+                                          q.hasOwnProperty('options') && Array.isArray(q.options) && q.options.length >= 2 && q.options.every(opt => typeof opt === 'string' && opt.length > 0) &&
+                                          (hasCorrectAnswer || hasCorrectIndex || hasAnswer) &&
+                                          typeof correctIdx === 'number' && correctIdx >= 0 && correctIdx < q.options.length &&
+                                          q.hasOwnProperty('explanation') && typeof q.explanation === 'string' && q.explanation.length > 0;
+                               });
+
+          if (!isValidQuiz) {
+              console.error("Generated single quiz data structure is invalid:", quizData);
+              updateDebugInfo(`Generated single quiz data structure invalid for M${moduleIndex + 1} L${lessonIndex + 1}.`);
+              throw new Error("Generated quiz data has incorrect question structure.");
+          }
+
+          state.courseContent.modules[moduleIndex].lessons[lessonIndex].quiz = quizData;
+          updateDebugInfo(`Single quiz generated successfully for M${moduleIndex + 1} L${lessonIndex + 1}.`);
+          showAlert('Quiz for this lesson has been generated/regenerated.', 'success');
+      } catch (err) {
+          console.error(`Single Quiz Gen Error M${moduleIndex+1}L${lessonIndex+1}:`, err);
+          state.courseContent.modules[moduleIndex].lessons[lessonIndex].quiz = { error: `Failed: ${err.message}` };
+          updateDebugInfo(`Single quiz generation failed for M${moduleIndex+1}L${lessonIndex+1}: ${err.message}`);
+          throw err; 
+      } finally {
+          renderCourseContent(state.courseContent);
+      }
+  }
+  
+  // --- New Function: Wrapper for expanding a single lesson's content ---
+  async function handleExpandSingleLessonClick(buttonElement, modId, lesId) {
+      console.log(`handleExpandSingleLessonClick called for M${modId}, L${lesId}`);
+      const lesson = state.courseContent?.modules?.[modId]?.lessons?.[lesId];
+      if (!lesson || !lesson.content || lesson.content.length < 20) {
+          showAlert("Lesson content is too short or missing to expand.", "info");
+          return;
+      }
+      await handleGeneration(
+          buttonElement,
+          'Expanding Lesson...',
+          () => expandSingleLesson(modId, lesId)
+      );
+  }
+
+  // --- New Function: Expands content for a single lesson ---
+  async function expandSingleLesson(moduleIndex, lessonIndex) {
+      console.log(`Expanding single lesson content for M${moduleIndex + 1} L${lessonIndex + 1}`);
+      updateDebugInfo(`Attempting to expand single lesson for M${moduleIndex + 1} L${lessonIndex + 1}.`);
+
+      if (!state.courseContent?.modules?.[moduleIndex]?.lessons?.[lessonIndex]) {
+          throw new Error('Lesson data not found for content expansion.');
+      }
+      const module = state.courseContent.modules[moduleIndex];
+      const lesson = module.lessons[lessonIndex];
+
+      if (!lesson.content || lesson.content.length < 20) { 
+          showAlert('Lesson content is too short to expand meaningfully.', 'info');
+          updateDebugInfo(`Single lesson expansion skipped for M${moduleIndex+1}L${lessonIndex+1}: content too short.`);
+          renderCourseContent(state.courseContent); 
+          return;
+      }
+
+      const newSystemPromptForExpansion = "You elaborate and expand on provided lesson content. Respond ONLY with the expanded text content, keeping tone and style consistent. Avoid using any markdown formatting such as ## headings, **bold text**, *italic text*, or list markers like *, -, or 1.). Provide the content as plain text paragraphs. If lists are necessary, integrate them naturally into sentences or use simple numbered/bulleted text without markdown symbols.";
+
+      const messages = [
+          { role: 'system', content: newSystemPromptForExpansion },
+          { role: 'user', content: `Expand this lesson content for lesson "${lesson.title}" (Module: "${module.title}"). Elaborate on key points, add examples/details, aiming for roughly double length, maintaining clarity.\n\nExisting Content:\n${lesson.content}` }
+      ];
+
+      try {
+          const expandedContent = await makeApiRequest(state.provider, state.apiKey, messages, state.model);
+          if (expandedContent && expandedContent.trim().length > lesson.content.length * 0.8) { 
+              state.courseContent.modules[moduleIndex].lessons[lessonIndex].content = expandedContent.trim();
+              updateDebugInfo(`Single lesson content expanded successfully for M${moduleIndex + 1} L${lessonIndex + 1}.`);
+              showAlert('Lesson content has been expanded.', 'success');
+          } else {
+              console.warn(`Expansion for M${moduleIndex+1}L${lessonIndex+1} did not result in sufficiently longer content or was empty.`);
+              updateDebugInfo(`Single lesson expansion for M${moduleIndex+1}L${lessonIndex+1} did not result in sufficiently longer content.`);
+              showAlert('Content expansion did not yield significant changes.', 'info');
+          }
+      } catch (err) {
+          console.error(`Single Lesson Expansion Error M${moduleIndex+1}L${lessonIndex+1}:`, err);
+          updateDebugInfo(`Single lesson expansion failed for M${moduleIndex+1}L${lessonIndex+1}: ${err.message}`);
+          throw err; 
+      } finally {
+          renderCourseContent(state.courseContent);
+      }
+  }
+
+  // --- Button Action Implementations ---
+  async function generateQuizzes() { 
+    if (!state.courseContent?.modules) throw new Error('Course content not available.');
+    if (!state.apiKey) throw new Error('API Key not available.');
+
+    let quizzesGenerated = 0, errorsOccurred = 0;
+    const quizPromises = [];
+
+    state.courseContent.modules.forEach((module, modIdx) => {
+        (module.lessons || []).forEach((lesson, lesIdx) => {
+            if (!lesson.content || lesson.content.length < 50 ) { 
+                return; 
+            }
+            const promise = (async () => {
+                console.log(`Generating quiz for M${modIdx + 1} L${lesIdx + 1}`);
+                 updateDebugInfo(`Generating quiz for M${modIdx + 1} L${lesIdx + 1}`);
+                const messages = [
+                    { role: 'system', content: 'Create a 3-5 question multiple-choice quiz (4 options, 1 correct index 0-3, explanation) as JSON: {"title": "Quiz: ...", "questions": [...]}. Respond ONLY with valid JSON.' },
+                    { role: 'user', content: `Lesson: "${lesson.title}" (Module: "${module.title}"). Content: ${(lesson.content || '').substring(0, 1500)}...` }
+                ];
+                try {
+                    const response = await makeApiRequest(state.provider, state.apiKey, messages, state.model); 
+                    const quizData = safeJsonParse(response); 
+
+                    const isValidQuiz = quizData?.questions?.length > 0 &&
+                                         quizData.questions.every(q => {
+                                             const hasCorrectAnswer = q.hasOwnProperty('correctAnswer');
+                                             const hasCorrectIndex = q.hasOwnProperty('correctIndex');
+                                             const hasAnswer = q.hasOwnProperty('answer');
+                                             const correctIdx = hasCorrectAnswer ? q.correctAnswer : (hasCorrectIndex ? q.correctIndex : (hasAnswer ? q.answer : undefined));
+
+                                             return q.hasOwnProperty('question') && typeof q.question === 'string' && q.question.length > 0 &&
+                                                    q.hasOwnProperty('options') && Array.isArray(q.options) && q.options.length >= 2 && q.options.every(opt => typeof opt === 'string' && opt.length > 0) &&
+                                                    (hasCorrectAnswer || hasCorrectIndex || hasAnswer) && 
+                                                    typeof correctIdx === 'number' && correctIdx >= 0 && correctIdx < q.options.length && 
+                                                    q.hasOwnProperty('explanation') && typeof q.explanation === 'string' && q.explanation.length > 0;
+                                         });
+
+                    if (!isValidQuiz) {
+                         console.error("Generated quiz data structure is invalid:", quizData);
+                         updateDebugInfo(`Generated quiz data structure is invalid for M${modIdx + 1} L${lesIdx + 1}.`);
+                         throw new Error("Generated quiz data has incorrect question structure.");
+                    }
+
+                    state.courseContent.modules[modIdx].lessons[lesIdx].quiz = quizData;
+                    quizzesGenerated++;
+                     updateDebugInfo(`Quiz generated successfully for M${modIdx + 1} L${lesIdx + 1}.`);
+                } catch (err) {
+                    console.error(`Quiz Gen Error M${modIdx+1}L${lesIdx+1}:`, err);
+                    errorsOccurred++;
+                    state.courseContent.modules[modIdx].lessons[lesIdx].quiz = { error: `Failed: ${err.message}` };
+                     updateDebugInfo(`Quiz generation failed for M${modIdx+1}L${lesIdx+1}: ${err.message}`);
+                }
+            })();
+            quizPromises.push(promise);
+        });
+    });
+
+    await Promise.all(quizPromises);
+    renderCourseContent(state.courseContent); 
+    if (errorsOccurred > 0) showAlert(`${quizzesGenerated} quizzes OK, ${errorsOccurred} failed.`, 'error'); 
+    else if (quizzesGenerated > 0) showAlert('Quizzes generated!', 'success'); 
+    else showAlert('No suitable lessons found to generate new quizzes for.', 'info'); 
+     updateDebugInfo("Quiz generation process finished.");
+  }
+
+  async function expandAllTopics() { 
+      if (!state.courseContent?.modules) throw new Error('Course content not available.');
+      if (!state.apiKey) throw new Error('API Key not available.');
+
+      let lessonsExpanded = 0, errorsOccurred = 0;
+      const expansionPromises = [];
+      
+      const newSystemPromptForExpansion = "You elaborate and expand on provided lesson content. Respond ONLY with the expanded text content, keeping tone and style consistent. Avoid using any markdown formatting such as ## headings, **bold text**, *italic text*, or list markers like *, -, or 1.). Provide the content as plain text paragraphs. If lists are necessary, integrate them naturally into sentences or use simple numbered/bulleted text without markdown symbols.";
+
+      state.courseContent.modules.forEach((module, modIdx) => {
+          (module.lessons || []).forEach((lesson, lesIdx) => {
+              if (!lesson.content || lesson.content.length < 20) return; 
+
+              const promise = (async () => {
+                  console.log(`Expanding content for M${modIdx + 1} L${lesIdx + 1} (All Topics)`);
+                  updateDebugInfo(`Expanding content for M${modIdx + 1} L${lesIdx + 1} (All Topics).`);
+                  const messages = [ 
+                      { role: 'system', content: newSystemPromptForExpansion }, 
+                      { role: 'user', content: `Expand this lesson content for lesson "${lesson.title}" (Module: "${module.title}"). Elaborate on key points, add examples/details, aiming for roughly double length, maintaining clarity.\n\nExisting Content:\n${lesson.content}` }
+                  ];
+                  try {
+                      const expandedContent = await makeApiRequest(state.provider, state.apiKey, messages, state.model); 
+                      if (expandedContent && expandedContent.trim().length > lesson.content.length * 0.8) { 
+                          state.courseContent.modules[modIdx].lessons[lesIdx].content = expandedContent.trim();
+                          lessonsExpanded++;
+                          updateDebugInfo(`Content expanded successfully for M${modIdx + 1} L${lesIdx + 1} (All Topics).`);
+                      } else {
+                          console.warn(`Expansion for M${modIdx+1}L${lesIdx+1} (All Topics) did not result in longer content.`);
+                           updateDebugInfo(`Content expansion for M${modIdx+1}L${lesIdx+1} (All Topics) did not result in longer content.`);
+                      }
+                  } catch (err) {
+                      console.error(`Content Expansion Error M${modIdx+1}L${lesIdx+1} (All Topics):`, err);
+                      errorsOccurred++;
+                       updateDebugInfo(`Content expansion failed for M${modIdx+1}L${lesIdx+1} (All Topics): ${err.message}`);
+                  }
+              })();
+              expansionPromises.push(promise);
+          });
+      });
+
+      await Promise.all(expansionPromises);
+      renderCourseContent(state.courseContent); 
+      if (errorsOccurred > 0) showAlert(`${lessonsExpanded} lessons expanded, ${errorsOccurred} failed.`, 'error'); 
+      else if (lessonsExpanded > 0) showAlert('Lesson content expanded!', 'success'); 
+      else showAlert('No suitable lessons found for expansion or expansion failed.', 'info'); 
+      updateDebugInfo("Content expansion process (All Topics) finished.");
+  }
+
+  function navigateToSaveExport() {
+      console.log("Navigating to Save/Export.");
+      updateDebugInfo("Navigating to Save/Export.");
+      if (!state.courseContent) { showAlert("No course loaded.", "error"); return; } 
+      try {
+          localStorage.setItem('courseToManage', JSON.stringify(state.courseContent));
+          if(state.apiKey) localStorage.setItem('storedApiKey', state.apiKey);
+          if(state.provider) localStorage.setItem('storedProvider', state.provider);
+          if(state.model) localStorage.setItem('storedModel', state.model);
+          window.location.href = 'CourseSavingAndExport.html';
+      } catch (e) { console.error("Error saving for navigation:", e); updateDebugInfo(`Error saving for navigation: ${e.message}`); showAlert("Could not prepare data for save/export page.", "error"); } 
+  }
+
+  // --- Quiz Modal Functions ---
+  function loadAndShowQuiz(quizData, moduleIndex, lessonIndex) {
+      console.log("loadAndShowQuiz called for M:", moduleIndex, "L:", lessonIndex, "Data:", quizData);
+      updateDebugInfo("Loading and showing quiz.");
+      if (!quizData?.questions?.length) { showAlert("Quiz has no questions.", "error"); updateDebugInfo("Quiz has no questions."); return; } 
+
+      state.currentQuizMeta = {
+          moduleIndex,
+          lessonIndex,
+          quizData, 
+          currentQuestionIndex: 0,
+          score: 0
+      };
+      state.quizAnswers[`${moduleIndex}-${lessonIndex}`] = {}; 
+
+      elements.quizModalTitle.textContent = escapeHtml(quizData.title || `Quiz: M${moduleIndex + 1}, L${lessonIndex + 1}`); 
+      elements.quizQuestionsContainer.innerHTML = ''; 
+
+      elements.submitQuizBtn.style.display = 'inline-flex'; 
+      elements.submitQuizBtn.disabled = true; 
+      elements.nextQuestionBtn.style.display = 'none';
+      elements.quizResult.style.display = 'none'; 
+      elements.quizQuestionsContainer.style.display = 'block'; 
+
+      elements.quizProgressBar.style.width = '0%'; 
+
+      renderCurrentQuestion();
+
+      elements.quizModal.classList.add('visible'); 
+      updateDebugInfo("Quiz modal shown.");
+  }
+
+  function renderCurrentQuestion() {
+      console.log("renderCurrentQuestion called. Current index:", state.currentQuizMeta?.currentQuestionIndex);
+      updateDebugInfo(`Rendering question ${state.currentQuizMeta?.currentQuestionIndex + 1}.`);
+      if (!state.currentQuizMeta) { console.log("renderCurrentQuestion: No current quiz meta."); updateDebugInfo("renderCurrentQuestion: No current quiz meta."); return; }
+
+      const { quizData, currentQuestionIndex } = state.currentQuizMeta;
+      const currentQuestion = quizData.questions[currentQuestionIndex];
+
+      if (!currentQuestion) {
+           console.log("renderCurrentQuestion: No question found at index", currentQuestionIndex);
+            updateDebugInfo(`renderCurrentQuestion: No question found at index ${currentQuestionIndex}.`);
+           if (currentQuestionIndex >= quizData.questions.length) {
+               showQuizResults();
+           }
+           return;
+      }
+
+      elements.quizQuestionsContainer.innerHTML = ''; 
+
+      const questionHtml = `
+          <div class="quiz-question" data-question-index="${currentQuestionIndex}">
+              <p><strong>${currentQuestionIndex + 1}/${quizData.questions.length}:</strong> ${escapeHtml(currentQuestion.question||'N/A')}</p>
+              <ul class="quiz-options">
+                  ${(currentQuestion.options||[]).map((opt, optIdx) => `
+                      <li class="quiz-option" data-option-index="${optIdx}">${String.fromCharCode(65+optIdx)}. ${escapeHtml(opt||'N/A')}</li>`).join('')}
+              </ul>
+              <div class="quiz-explanation" style="display: none;"> 
+                  <p class="explanation-text"><strong>Explanation:</strong> ${escapeHtml(currentQuestion.explanation||'N/A')}</p>
+              </div>
+          </div>`; 
+      elements.quizQuestionsContainer.innerHTML = questionHtml;
+
+      elements.submitQuizBtn.disabled = true;
+      elements.submitQuizBtn.style.display = 'inline-flex'; 
+      elements.nextQuestionBtn.style.display = 'none';     
+
+      console.log("renderCurrentQuestion finished. Submit button disabled, Next hidden.");
+      updateDebugInfo(`Question ${currentQuestionIndex + 1} rendered. Submit disabled, Next hidden.`);
+  }
+
+
+  function hideQuizModal() {
+      console.log("hideQuizModal called.");
+      updateDebugInfo("Hiding quiz modal.");
+      elements.quizModal.classList.remove('visible');
+      elements.quizQuestionsContainer.innerHTML = ''; 
+      state.currentQuizMeta = null; 
+      state.quizAnswers = {}; 
+      state.debugLog = []; 
+      updateDebugInfo("Quiz modal hidden, state reset.");
+  }
+
+  function handleSubmitQuizClick() {
+      console.log("Submit button clicked");
+      updateDebugInfo("Submit button clicked.");
+      if (!state.currentQuizMeta) { console.error("Submit: No current quiz meta."); updateDebugInfo("Submit: No current quiz meta."); return; }
+
+      const { moduleIndex, lessonIndex, quizData, currentQuestionIndex } = state.currentQuizMeta;
+      const currentQuestionDiv = elements.quizQuestionsContainer.querySelector('.quiz-question'); 
+
+      if (!currentQuestionDiv) { console.error("Submit: Missing current question div in container"); updateDebugInfo("Submit: Missing current question div."); return; }
+
+      const selectedOpt = currentQuestionDiv.querySelector('.quiz-option.selected');
+      if (!selectedOpt) { console.warn("Submit: No option selected"); updateDebugInfo("Submit: No option selected."); return; } 
+
+      const selectedIdx = parseInt(selectedOpt.dataset.optionIndex);
+      const explanationDiv = currentQuestionDiv.querySelector('.quiz-explanation');
+      const currentQuestionData = quizData.questions[currentQuestionIndex];
+      const correctIdx = currentQuestionData.correctAnswer ?? currentQuestionData.correctIndex ?? currentQuestionData.answer;
+
+      if (correctIdx === undefined || correctIdx === null) { console.error("Submit: Missing correct answer data for question:", currentQuestionIndex); updateDebugInfo(`Submit: Missing correct answer for Q${currentQuestionIndex}.`); return; }
+
+      console.log(`Submit: M${moduleIndex} L${lessonIndex} Q${currentQuestionIndex} - Selected: ${selectedIdx}, Correct: ${correctIdx}`);
+      updateDebugInfo(`Submit: Q${currentQuestionIndex} - Selected: ${selectedIdx}, Correct: ${correctIdx}`);
+
+      currentQuestionDiv.querySelectorAll('.quiz-option').forEach(opt => {
+          opt.style.pointerEvents = 'none';
+          opt.classList.add('disabled');
+          const optIdx = parseInt(opt.dataset.optionIndex);
+          if (optIdx === correctIdx) opt.classList.add('correct');
+          else if (optIdx === selectedIdx) opt.classList.add('incorrect');
+      });
+
+      const quizKey = `${moduleIndex}-${lessonIndex}`;
+      if (!state.quizAnswers[quizKey]) state.quizAnswers[quizKey] = {};
+      state.quizAnswers[quizKey][currentQuestionIndex] = { selected: selectedIdx, correct: selectedIdx === correctIdx };
+      if (selectedIdx === correctIdx) {
+          state.currentQuizMeta.score++;
+      }
+
+      if (explanationDiv) {
+          const explanationTextEl = explanationDiv.querySelector('.explanation-text');
+          const baseExplanation = escapeHtml(currentQuestionData.explanation || 'No explanation provided.'); 
+           if (explanationTextEl) { 
+               if (selectedIdx !== correctIdx) explanationTextEl.innerHTML = `<strong>Incorrect.</strong> Correct answer was option ${String.fromCharCode(65 + correctIdx)}.<br><strong>Explanation:</strong> ${baseExplanation}`;
+               else explanationTextEl.innerHTML = `<strong>Correct!</strong><br><strong>Explanation:</strong> ${baseExplanation}`;
+           }
+          explanationDiv.style.display = 'block'; 
+          console.log("Explanation shown for Q:", currentQuestionIndex);
+           updateDebugInfo(`Explanation shown for Q${currentQuestionIndex}.`);
+      } else {
+          console.error("Submit: Explanation div not found for Q:", currentQuestionIndex);
+           updateDebugInfo(`Submit: Explanation div not found for Q${currentQuestionIndex}.`);
+      }
+
+      elements.submitQuizBtn.style.display = 'none';      
+      elements.nextQuestionBtn.style.display = 'inline-flex'; 
+      elements.nextQuestionBtn.textContent = currentQuestionIndex < quizData.questions.length - 1 ? 'Next Question' : 'Show Results';
+      console.log("Submit finished. Buttons updated.");
+      updateDebugInfo("Submit finished. Submit hidden, Next shown.");
+  }
+
+  function handleNextQuestionClick() {
+      console.log("Next/Results button clicked");
+      updateDebugInfo("Next/Results button clicked.");
+      if (!state.currentQuizMeta) { console.error("Next: No current quiz meta."); updateDebugInfo("Next: No current quiz meta."); return; }
+
+      const { quizData, currentQuestionIndex } = state.currentQuizMeta;
+      const totalQuestions = quizData.questions.length;
+
+      const newQuestionIndex = currentQuestionIndex + 1; 
+      state.currentQuizMeta.currentQuestionIndex = newQuestionIndex; 
+      console.log("Next: Updated currentQuestionIndex to", newQuestionIndex);
+      updateDebugInfo(`Next: Updated currentQuestionIndex to ${newQuestionIndex}.`);
+
+      const completedQuestions = newQuestionIndex;
+      elements.quizProgressBar.style.width = `${(completedQuestions / totalQuestions) * 100}%`;
+      console.log("Next: Progress bar updated to", elements.quizProgressBar.style.width);
+      updateDebugInfo(`Next: Progress bar updated to ${elements.quizProgressBar.style.width}.`);
+
+      if (newQuestionIndex < totalQuestions) {
+          renderCurrentQuestion();
+          console.log("Next: Showing question", newQuestionIndex);
+          updateDebugInfo(`Next: Showing question ${newQuestionIndex + 1}.`);
+      } else {
+          console.log("Next: End of quiz, showing results.");
+          updateDebugInfo("Next: End of quiz, showing results.");
+          showQuizResults();
+      }
+      updateDebugInfo("handleNextQuestionClick finished.");
+  }
+
+  function showQuizResults() {
+      console.log("Showing quiz results");
+      updateDebugInfo("Showing quiz results.");
+      if (!state.currentQuizMeta) { console.error("ShowResults: No current quiz meta."); updateDebugInfo("ShowResults: No current quiz meta."); return; }
+
+      const { quizData, score } = state.currentQuizMeta;
+      const totalQuestions = quizData.questions.length;
+      const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+
+      elements.quizQuestionsContainer.style.display = 'none'; 
+      elements.submitQuizBtn.style.display = 'none';           
+      elements.nextQuestionBtn.style.display = 'none';         
+
+      elements.quizResult.style.display = 'block'; 
+      elements.quizScoreValue.textContent = percentage;
+      const feedbackText = percentage >= 80 ? "Excellent!" : (percentage >= 60 ? "Good job!" : "Review and try again!");
+      elements.quizFeedback.textContent = feedbackText;
+
+      elements.quizProgressBar.style.width = '100%'; 
+      console.log("Quiz results shown.");
+      updateDebugInfo("Quiz results shown.");
+  }
+
+  function handleRetakeQuizClick() {
+      console.log("Retake button clicked");
+      updateDebugInfo("Retake button clicked.");
+      if (!state.currentQuizMeta) { console.error("Retake: No current quiz meta."); updateDebugInfo("Retake: No current quiz meta."); return; }
+
+      const { moduleIndex, lessonIndex } = state.currentQuizMeta; 
+      const quizData = state.currentQuizMeta.quizData; 
+
+      state.currentQuizMeta.currentQuestionIndex = 0;
+      state.currentQuizMeta.score = 0;
+      state.quizAnswers[`${moduleIndex}-${lessonIndex}`] = {}; 
+      state.debugLog = []; 
+      updateDebugInfo("Quiz state reset for retake.");
+
+      elements.quizResult.style.display = 'none';             
+      elements.quizQuestionsContainer.style.display = 'block';
+      elements.quizProgressBar.style.width = '0%';
+
+      renderCurrentQuestion(); 
+
+      console.log("Quiz retake initiated.");
+      updateDebugInfo("Quiz retake initiated. First question rendered.");
+  }
+
+  // Close the modal if the user clicks outside of it
+  window.addEventListener('click', (event) => {
+      if (event.target === elements.quizModal) {
+          hideQuizModal();
+      }
+  });
+
+  // --- App Initialization ---
+  document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
