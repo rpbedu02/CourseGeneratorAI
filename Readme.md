@@ -2,7 +2,7 @@
 
 CourseGeneratorAI is a client-side web application designed to help educators and students rapidly generate, refine, and export educational course content using various Large Language Models (LLMs).
 
-**Live Demo:** [Link]
+**Live Demo:** [Link](https://rpbedu02.github.io/CourseGeneratorAI/)
 
 ## Table of Contents
 
